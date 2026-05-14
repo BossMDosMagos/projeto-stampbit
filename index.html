@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4cc9f0">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,9 +23,11 @@
 <span class="modal-close" id="authClose">&times;</span>
 <h2 id="authTitle">ACESSO</h2>
 <div class="modal-error" id="authError"></div>
+<form id="authForm" onsubmit="return false" style="display:contents">
 <input class="modal-input" id="authEmail" type="email" placeholder="EMAIL">
 <input class="modal-input" id="authPassword" type="password" placeholder="SENHA">
-<button class="modal-btn" id="authBtn">ENTRAR</button>
+<button class="modal-btn" id="authBtn" type="button">ENTRAR</button>
+</form>
 <div class="modal-toggle" id="authToggle">Criar conta</div>
 </div></div>
 
