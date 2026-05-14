@@ -199,6 +199,62 @@
 <div id="guildaContent" style="padding:20px"></div>
 </section>
 
+<!-- ADMIN PANEL (protegido) -->
+<section class="view" id="viewAdmin">
+<div class="view-title">&#x2699;&#xFE0F; Painel de Controle</div>
+<div class="view-subtitle">Automacao e gestao estrategica do ecossistema STAMPBIT</div>
+<div id="adminLogin" style="max-width:400px;margin:40px auto;text-align:center">
+  <div style="font-size:2rem;margin-bottom:12px">&#x1F512;</div>
+  <input class="modal-input" id="adminPassInput" type="password" placeholder="Chave de acesso">
+  <button class="modal-btn" onclick="adminLogin()">ACESSAR PAINEL</button>
+</div>
+<div id="adminPanel" style="display:none">
+  <!-- Stats -->
+  <div id="adminHealth" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:20px">
+    <!-- Odds Sliders -->
+    <div class="forja-card"><h3>&#x1F3AF; Probabilidades Globais</h3>
+      <div id="oddsSliders"></div>
+      <button class="store-btn" style="margin-top:12px;font-size:0.6rem" onclick="applyOdds()">APLICAR</button>
+    </div>
+    <!-- Price Multiplier -->
+    <div class="forja-card"><h3>&#x1F4B0; Multiplicador de Prec-o</h3>
+      <p style="font-size:0.65rem">Inflacao/deflacao global da loja</p>
+      <input type="range" id="priceMult" min="0.5" max="3.0" step="0.1" value="1.0"
+        style="width:100%;margin:8px 0;-webkit-appearance:none;height:6px;background:#333;border-radius:3px;outline:none">
+      <div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--cyan)" id="priceMultVal">x1.0</div>
+    </div>
+    <!-- Broadcast -->
+    <div class="forja-card"><h3>&#x1F514; Broadcast Global</h3>
+      <p style="font-size:0.65rem">Envia notificac-a-o para todos os usua-rios ativos</p>
+      <input class="modal-input" id="broadcastInput" placeholder="Mensagem...">
+      <button class="store-btn" style="margin-top:8px;font-size:0.6rem" onclick="sendBroadcast()">ENVIAR</button>
+    </div>
+    <!-- JSON Import -->
+    <div class="forja-card"><h3>&#x1F4E5; Importac-a-o em Massa (JSON)</h3>
+      <p style="font-size:0.65rem">Cole um array JSON de selos para importar</p>
+      <textarea class="modal-input" id="jsonImport" rows="4" placeholder='[{"name":"Selo X","rarity":"Lendario","emoji":"🔶"}]' style="resize:vertical;font-size:0.6rem"></textarea>
+      <button class="store-btn" style="margin-top:8px;font-size:0.6rem" onclick="bulkImport()">IMPORTAR</button>
+      <div id="jsonResult" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--cyan);margin-top:4px"></div>
+    </div>
+    <!-- Collective Reward -->
+    <div class="forja-card"><h3>&#x1F381; Recompensa Coletiva</h3>
+      <p style="font-size:0.65rem">Distribui cre-ditos para TODOS os usua-rios</p>
+      <input class="modal-input" id="rewardAmount" type="number" placeholder="Quantidade de cre-ditos" value="50">
+      <button class="store-btn" style="margin-top:8px;font-size:0.6rem" onclick="distributeReward()">DISTRIBUIR</button>
+      <div id="rewardResult" style="font-family:var(--font-mono);font-size:0.55rem;color:var(--cyan);margin-top:4px"></div>
+    </div>
+    <!-- User Lookup -->
+    <div class="forja-card"><h3>&#x1F50D; Modo Deus — Visualizar Usua-rio</h3>
+      <p style="font-size:0.65rem">Veja o album de qualquer usua-rio pelo email</p>
+      <input class="modal-input" id="lookupEmail" type="email" placeholder="Email do usua-rio">
+      <button class="store-btn" style="margin-top:8px;font-size:0.6rem" onclick="lookupUser()">BUSCAR</button>
+      <div id="lookupResult" style="margin-top:8px;font-size:0.6rem"></div>
+    </div>
+  </div>
+</div>
+</section>
+
 <footer>DESIGNED COMMAND SOLUCOES TECNOLOGIA // PROTOCOLO ALLBIONICS // 2026</footer>
 
 <style>
@@ -1446,6 +1502,157 @@ function exportAlbumAsWallpaper(albumIdx){
   notif('Wallpaper exportado: '+a.name);
 }
 
+// ===== ADMIN PANEL =====
+var ADMIN_KEY='stampbit2026';
+var adminLoggedIn=false;
+
+function showAdmin(){
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active')});
+  document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+  document.getElementById('viewAdmin').classList.add('active');
+  if(adminLoggedIn)renderAdmin();
+}
+
+// Secret entry: click logo 5x rapidamente
+var logoClick=0;
+document.querySelector('.logo').addEventListener('click',function(){
+  logoClick++;
+  if(logoClick>=5){logoClick=0;showAdmin();notif('Painel de controle...')}
+  setTimeout(function(){logoClick=0},2000);
+});
+
+function adminLogin(){
+  var p=document.getElementById('adminPassInput').value;
+  if(p===ADMIN_KEY){
+    adminLoggedIn=true;
+    document.getElementById('adminLogin').style.display='none';
+    document.getElementById('adminPanel').style.display='block';
+    renderAdmin();
+    notif('Modo administrador ativado');
+  }else{
+    document.getElementById('adminPassInput').style.borderColor='#f72585';
+    notif('Chave invalida');
+  }
+}
+
+function renderAdmin(){
+  loadHealth();
+  renderOddsSliders();
+  document.getElementById('priceMult').addEventListener('input',function(){
+    document.getElementById('priceMultVal').textContent='x'+parseFloat(this.value).toFixed(1);
+  });
+}
+
+function loadHealth(){
+  var el=document.getElementById('adminHealth');
+  el.innerHTML='<div style="grid-column:1/-1;font-size:0.65rem;color:#666;font-family:var(--font-mono);margin-bottom:8px">Carregando...</div>';
+  // Simulated health data from local state (in production, calls get_economy_health RPC)
+  var totalC=0;for(var n in COL)totalC+=COL[n].qty;
+  var html=
+    '<div class="dash-widget gold"><div style="font-size:1.5rem">\u{1F465}</div><div class="dash-widget-val" style="font-size:1.2rem">'+(U?'1':'0')+'</div><div class="dash-widget-label">Usuarios</div></div>'+
+    '<div class="dash-widget cyan"><div style="font-size:1.5rem">\u2605</div><div class="dash-widget-val" style="font-size:1.2rem">'+C+'</div><div class="dash-widget-label">Creditos Locais</div></div>'+
+    '<div class="dash-widget pink"><div style="font-size:1.5rem">\u{1F4E6}</div><div class="dash-widget-val" style="font-size:1.2rem">'+totalC+'</div><div class="dash-widget-label">Selos em Circ.</div></div>'+
+    '<div class="dash-widget" style="border-color:#f72585"><div style="font-size:1.5rem">\u{1F4CA}</div><div class="dash-widget-val" style="font-size:1.2rem;color:#f72585">'+STAMPS.length+'</div><div class="dash-widget-label">Tipos de Selo</div></div>'+
+    '<div class="dash-widget gold"><div style="font-size:1.5rem">\u{1F504}</div><div class="dash-widget-val" style="font-size:1.2rem">'+TRADES.length+'</div><div class="dash-widget-label">Trocas</div></div>'+
+    '<div class="dash-widget cyan"><div style="font-size:1.5rem">\u{1F3C6}</div><div class="dash-widget-val" style="font-size:1.2rem">'+ACH.length+'/'+ECO.ACH_DEFS.length+'</div><div class="dash-widget-label">Conquistas</div></div>';
+  el.innerHTML=html;
+}
+
+function renderOddsSliders(){
+  var rarities=['Comum','Raro','Epico','Lendario'];
+  var defaultWeights=[60,25,12,3];
+  var html='';
+  rarities.forEach(function(r,i){
+    html+='<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:0.6rem;font-family:var(--font-mono);margin-bottom:4px">'+
+      '<span style="color:'+RARITY_COLORS[r]+'">'+r+'</span><span id="wVal_'+i+'" style="color:#888">'+defaultWeights[i]+'%</span></div>'+
+      '<input type="range" id="wSlider_'+i+'" min="1" max="90" value="'+defaultWeights[i]+'" style="width:100%;-webkit-appearance:none;height:4px;background:#333;border-radius:2px;outline:none" oninput="document.getElementById(\'wVal_'+i+'\').textContent=this.value+\'%\'"></div>'
+  });
+  document.getElementById('oddsSliders').innerHTML=html;
+}
+
+function applyOdds(){
+  var rarities=['Comum','Raro','Epico','Lendario'];
+  var weights={};
+  rarities.forEach(function(r,i){
+    var v=parseInt(document.getElementById('wSlider_'+i).value)||1;
+    weights[r]=v;
+  });
+  // Save to local store for shop simulation
+  SB.set('admin_odds',weights);
+  notif('Probabilidades atualizadas: '+
+    Object.keys(weights).map(function(k){return k+'='+weights[k]+'%'}).join(' | '));
+}
+
+function sendBroadcast(){
+  var msg=document.getElementById('broadcastInput').value.trim();
+  if(!msg){notif('Digite uma mensagem');return}
+  SB.set('broadcast',msg);
+  // Show as top banner
+  var b=document.createElement('div');
+  b.id='broadcastBanner';
+  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99994;background:linear-gradient(90deg,#f72585,#9d4edd);color:#fff;text-align:center;padding:10px 20px;font-family:var(--font-mono);font-size:0.7rem;letter-spacing:1px;animation:fadeIn 0.3s';
+  b.textContent='\u{1F514} ANUNCIO: '+msg;
+  document.body.insertBefore(b,document.body.firstChild);
+  setTimeout(function(){if(b.parentNode)b.remove()},8000);
+  document.getElementById('broadcastInput').value='';
+  notif('Broadcast enviado!');
+}
+
+function bulkImport(){
+  var json=document.getElementById('jsonImport').value.trim();
+  if(!json){notif('Cole o JSON');return}
+  try{
+    var data=JSON.parse(json);
+    if(!Array.isArray(data)){notif('Deve ser um array');return}
+    var count=0;
+    data.forEach(function(s){
+      if(!s.name)return;
+      var exists=STAMPS.some(function(x){return x.name===s.name});
+      if(!exists){
+        STAMPS.push({id:'s'+Date.now(),name:s.name,emoji:s.emoji||'\u{1F4E6}',rarity:s.rarity||'Comum',desc:s.description||''});
+        COL[s.name]={qty:0,dup:0};
+        count++;
+      }
+    });
+    if(count>0)SB.set('collection',COL);
+    document.getElementById('jsonResult').textContent=count+' selos importados!';
+    notif(count+' selos importados com sucesso');
+    renderColecao();renderLoja();
+  }catch(e){document.getElementById('jsonResult').textContent='Erro: '+e.message;notif('JSON invalido')}
+}
+
+function distributeReward(){
+  var amt=parseInt(document.getElementById('rewardAmount').value)||50;
+  C+=amt;
+  SB.set('credits',C);
+  document.getElementById('rewardResult').textContent=amt+' creditos distribuidos! (modo local)';
+  notif(amt+' creditos adicionados a sua conta');
+  updateNav();
+}
+
+function lookupUser(){
+  var email=document.getElementById('lookupEmail').value.trim();
+  if(!email){notif('Digite um email');return}
+  // In offline mode, show current user's collection
+  var el=document.getElementById('lookupResult');
+  var total=0,owned=0;
+  STAMPS.forEach(function(s){
+    var c=COL[s.name]||{qty:0};
+    total+=c.qty;
+    if(c.qty>0)owned++;
+  });
+  el.innerHTML='<div style="background:rgba(18,18,18,0.6);border:1px solid #333;border-radius:8px;padding:12px">'+
+    '<div style="font-size:0.6rem;color:#888">Usua-rio: <strong style="color:#ccc">'+(email||'local')+'</strong></div>'+
+    '<div style="font-size:0.6rem;color:#888">Selos: <strong style="color:var(--cyan)">'+total+'</strong></div>'+
+    '<div style="font-size:0.6rem;color:#888">Album: <strong style="color:var(--gold)">'+owned+'/'+STAMPS.length+' ('+Math.round(owned/STAMPS.length*100)+'%)</strong></div>'+
+    '<button class="trade-btn" style="margin-top:8px;font-size:0.5rem" onclick="document.getElementById(\'lookupEmail\').value=\'\';document.getElementById(\'lookupResult\').innerHTML=\'\'">FECHAR</button></div>';
+}
+
+// Checar rota admin via URL hash
+function checkAdminRoute(){
+  if(window.location.hash==='#admin'){showAdmin();window.location.hash='';}
+}
+
 // ===== PARTICLES (Pirlipimpim - suave como po de fada) =====
 var cv=document.getElementById('particles-canvas'),cx=cv.getContext('2d'),ps=[];
 function rs(){cv.width=window.innerWidth;cv.height=window.innerHeight}
@@ -1502,7 +1709,8 @@ updateNav();
 renderAll();
 // Render event banner after a short delay (dashboard needs to exist)
 setTimeout(renderEventBanner, 500);
-console.log('[STAMPBIT] v5.0 ready - 26 features active');
+setTimeout(checkAdminRoute, 300);
+console.log('[STAMPBIT] v5.0 ready - 26 features + Admin Panel');
 </script>
 </body>
 </html>
