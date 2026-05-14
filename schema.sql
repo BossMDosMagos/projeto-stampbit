@@ -297,3 +297,25 @@ CREATE POLICY "UserStreaks own" ON user_streaks
 DROP POLICY IF EXISTS "UserSeasonPass own" ON user_season_pass;
 CREATE POLICY "UserSeasonPass own" ON user_season_pass
   FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================
+-- v5.0 - Eventos Sazonais & QR
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS seasonal_events (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name         TEXT NOT NULL,
+  description  TEXT,
+  emoji        TEXT DEFAULT '\u{1F389}',
+  stamp_name   TEXT,
+  stamp_emoji  TEXT DEFAULT '\u{1F4E6}',
+  stamp_rarity TEXT DEFAULT 'Lendario',
+  starts_at    TIMESTAMPTZ NOT NULL,
+  ends_at      TIMESTAMPTZ NOT NULL,
+  is_active    BOOLEAN DEFAULT true,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE seasonal_events ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "SeasonalEvents read" ON seasonal_events;
+CREATE POLICY "SeasonalEvents read" ON seasonal_events FOR SELECT USING (true);
