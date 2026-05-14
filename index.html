@@ -255,7 +255,8 @@
 </div>
 </section>
 
-<footer>DESIGNED COMMAND SOLUCOES TECNOLOGIA // PROTOCOLO ALLBIONICS // 2026</footer>
+<footer>DESIGNED COMMAND SOLUCOES TECNOLOGIA // PROTOCOLO ALLBIONICS // 2026
+<span style="font-size:0.4rem;color:#222;display:block;margin-top:4px">[Ctrl+Shift+A]</span></footer>
 
 <style>
 .view-subtitle.stats{font-size:0.7rem;margin-bottom:16px}
@@ -1513,12 +1514,14 @@ function showAdmin(){
   if(adminLoggedIn)renderAdmin();
 }
 
-// Secret entry: click logo 5x rapidamente
-var logoClick=0;
-document.querySelector('.logo').addEventListener('click',function(){
-  logoClick++;
-  if(logoClick>=5){logoClick=0;showAdmin();notif('Painel de controle...')}
-  setTimeout(function(){logoClick=0},2000);
+// Admin access: Ctrl+Shift+A ou duplo clique no footer
+document.addEventListener('keydown',function(e){
+  if(e.ctrlKey&&e.shiftKey&&e.key==='A'){e.preventDefault();showAdmin();notif('Painel de controle')}
+});
+
+// Duplo clique no footer como fallback
+document.querySelector('footer').addEventListener('dblclick',function(){
+  showAdmin();notif('Painel de controle');
 });
 
 function adminLogin(){
