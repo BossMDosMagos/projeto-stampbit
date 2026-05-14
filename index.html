@@ -239,27 +239,223 @@ var RARITIES = ['Comum','Raro','Epico','Lendario'];
 var RARITY_ORDER = {Comum:0,Raro:1,Epico:2,Lendario:3};
 var RARITY_COLORS = {Comum:'#888',Raro:'#4cc9f0',Epico:'#9d4edd',Lendario:'#f72585'};
 
-// ===== STORAGE =====
-function sg(k,d){try{var v=localStorage.getItem('sb4_'+k);return v?JSON.parse(v):d}catch(e){return d}}
-function ss(k,v){try{localStorage.setItem('sb4_'+k,JSON.stringify(v))}catch(e){}}
+// ===== SUPABASE BACKEND (persistencia com fallback localStorage) =====
+var SB = (function(){
+  var client = null, ready = false;
+  var cache = {}; // estado em memoria
+
+  function lsk(k){return 'sb4_'+k}
+
+  // Carrega do localStorage para o cache
+  function initCache(){
+    var keys = ['user','credits','collection','streak','ach','pass','daily_free','daily_stamp','trades','market','guild','secret','bwins','dchal','totalOpened','forged_today','battles_today'];
+    for(var i=0;i<keys.length;i++){
+      var k=keys[i],v;
+      try{var r=localStorage.getItem(lsk(k));v=r?JSON.parse(r):null}catch(e){v=null}
+      cache[k]=v;
+    }
+    // defaults
+    if(cache.credits===null)cache.credits=200;
+    if(cache.streak===null)cache.streak={count:0,last:0,max:0};
+    if(cache.ach===null)cache.ach=[];
+    if(cache.pass===null)cache.pass={level:1,xp:0,totalOpened:0};
+    if(cache.daily_free===null)cache.daily_free='';
+    if(cache.daily_stamp===null)cache.daily_stamp='';
+    if(cache.trades===null)cache.trades=[];
+    if(cache.market===null)cache.market=[];
+    if(cache.guild===null)cache.guild=null;
+    if(cache.secret===null)cache.secret=false;
+    if(cache.bwins===null)cache.bwins=0;
+    if(cache.dchal===null)cache.dchal={};
+    if(cache.totalOpened===null)cache.totalOpened=0;
+    if(cache.forged_today===null)cache.forged_today=0;
+    if(cache.battles_today===null)cache.battles_today=0;
+    if(!cache.collection){cache.collection={};STAMPS.forEach(function(s){cache.collection[s.name]={qty:0,dup:0}})}
+  }
+  initCache();
+
+  // Sync cache -> localStorage (instantanea)
+  function persist(k){
+    try{localStorage.setItem(lsk(k),JSON.stringify(cache[k]))}catch(e){}
+  }
+
+  // Sync cache -> Supabase (assincrona, fire-and-forget)
+  function syncToSupabase(){
+    if(!ready || !SB.user) return;
+    var payload = {};
+    var syncKeys = ['credits','collection','streak','ach','pass','daily_free','daily_stamp','trades','market','guild','secret','bwins','dchal','totalOpened','forged_today','battles_today'];
+    for(var i=0;i<syncKeys.length;i++){
+      var k=syncKeys[i];
+      if(cache[k]!==undefined) payload[k]=cache[k];
+    }
+    fetch(SB.env.url + '/rest/v1/rpc/sync_user_data', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB.env.key,'Authorization':'Bearer '+SB.env.key},
+      body:JSON.stringify({p_user_id:SB.user.id,p_data:payload})
+    }).catch(function(){});
+  }
+
+  // Debounce sync (evita muitas chamadas)
+  var syncTimer=null;
+  function scheduleSync(){
+    if(!ready || !SB.user) return;
+    if(syncTimer) clearTimeout(syncTimer);
+    syncTimer=setTimeout(syncToSupabase,2000);
+  }
+
+  // API publica
+  return {
+    env: null,
+    user: null,
+    ready: function(){return ready},
+
+    // Inicializa conexao Supabase
+    init: async function(){
+      var u=window.STAMPBIT_ENV?.SUPABASE_URL, k=window.STAMPBIT_ENV?.SUPABASE_ANON_KEY;
+      if(!u||!k) return;
+      SB.env={url:u,key:k};
+      try{
+        var m=await import('https://esm.sh/@supabase/supabase-js@2');
+        client=m.createClient(u,k,{auth:{persistSession:true,autoRefreshToken:true},global:{headers:{'x-application-name':'STAMPBIT'}}});
+        ready=true;
+        console.log('[SB] Supabase connected');
+        // Se tem sessao, carrega dados remotos
+        var sess=await client.auth.getSession();
+        if(sess?.data?.session?.user){
+          SB.user=sess.data.session.user;
+          cache.user=SB.user;
+          persist('user');
+          await loadRemote();
+        }
+      }catch(e){console.warn('[SB] Offline:',e.message)}
+    },
+
+    // Auth
+    signIn: async function(email,password){
+      if(!client) return signInLocal(email,password);
+      var r=await client.auth.signInWithPassword({email,password});
+      if(r.error) return signInLocal(email,password);
+      SB.user=r.data.user;
+      cache.user=r.data.user;
+      persist('user');
+      await loadRemote();
+      return{user:r.data.user}
+    },
+    signUp: async function(email,password){
+      if(!client) return signInLocal(email,password);
+      var r=await client.auth.signUp({email,password,options:{data:{app:'STAMPBIT'}}});
+      if(r.error) return signInLocal(email,password);
+      SB.user=r.data.user;
+      cache.user=r.data.user;
+      persist('user');
+      return{user:r.data.user}
+    },
+    signOut: async function(){
+      if(client) await client.auth.signOut();
+      SB.user=null;
+      for(var k in cache){if(k!=='collection')cache[k]=null}
+      initCache();
+      try{localStorage.clear()}catch(e){}
+      // Preserva collection seed
+      if(!cache.collection){cache.collection={};STAMPS.forEach(function(s){cache.collection[s.name]={qty:0,dup:0}})}
+    },
+    isLoggedIn: function(){return!!SB.user},
+
+    // Leitura (instantanea do cache)
+    get: function(k){return cache[k]},
+    getAll: function(){return cache},
+
+    // Escrita (cache + localStorage + Supabase background)
+    set: function(k,v){
+      cache[k]=v;
+      persist(k);
+      scheduleSync();
+    },
+
+    // Sync bidirecional com Supabase
+    syncNow: syncToSupabase,
+
+    // Marcar forged hoje
+    markForged: function(){var f=cache.forged_today||0;cache.forged_today=f+1;persist('forged_today');scheduleSync()},
+    markBattle: function(){var b=cache.battles_today||0;cache.battles_today=b+1;persist('battles_today');scheduleSync()},
+    addPackOpened: function(){var t=cache.totalOpened||0;cache.totalOpened=t+1;persist('totalOpened');scheduleSync()},
+  };
+
+  // Fallback: auth local
+  function signInLocal(email,password){
+    if(!email||!password) return{error:'Preencha email e senha'};
+    SB.user={id:'u'+Date.now(),email:email};
+    cache.user=SB.user;persist('user');
+    return{user:SB.user}
+  }
+
+  // Carrega dados remotos e faz merge com localStorage
+  async function loadRemote(){
+    if(!ready||!SB.user||!client) return;
+    try{
+      var r=await client.rpc('get_user_data',{p_user_id:SB.user.id});
+      if(r.error) return;
+      var remote=r.data;
+      if(!remote) return;
+      // Merge: localStorage vence se mais recente
+      for(var k in remote){
+        if(cache[k]!==undefined && remote[k]!==null){
+          // Se o cache tem dados, mantem (localStorage e mais recente)
+          // Se cache vazio/default, usa remoto
+          var isDefault=false;
+          if(k==='credits'&&cache[k]===200)isDefault=true;
+          if(k==='collection'){
+            var allDefault=true;
+            for(var n in cache[k]){if(cache[k][n].qty>0){allDefault=false;break}}
+            if(!allDefault) isDefault=false;
+            else isDefault=true;
+          }
+          if(isDefault){cache[k]=remote[k];persist(k)}
+        }
+      }
+      console.log('[SB] Remote data loaded');
+    }catch(e){console.warn('[SB] Sync error:',e.message)}
+  }
+})();
+
 function notif(msg){var e=document.getElementById('notif');e.textContent=msg;e.style.display='block';e.style.opacity='1';setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.style.display='none'},500)},3000)}
 
-// ===== STATE =====
-var U = sg('user',null), C = sg('credits',200), COL = sg('collection',{}), ALBUMS = sg('albums',{});
-var STREAK = sg('streak',{count:0,last:0,max:0}), ACH = sg('ach',[]), DCHAL = sg('dchal',{});
-var PASS = sg('pass',{level:1,xp:0}), DAILY_FREE = sg('daily_free',''), DAILY_STAMP = sg('daily_stamp','');
-var TRADES = sg('trades',[]), MARKET = sg('market',[]), GUILD = sg('guild',null);
-var SECRET_UNLOCKED = sg('secret',false), BATTLE_WINS = sg('bwins',0);
+// ===== STATE (via SB cache) =====
+var U = SB.get('user');
+var C = SB.get('credits');
+var COL = SB.get('collection');
+var STREAK = SB.get('streak');
+var ACH = SB.get('ach');
+var DCHAL = SB.get('dchal');
+var PASS = SB.get('pass');
+var DAILY_FREE = SB.get('daily_free');
+var DAILY_STAMP = SB.get('daily_stamp');
+var TRADES = SB.get('trades');
+var MARKET = SB.get('market');
+var GUILD = SB.get('guild');
+var SECRET_UNLOCKED = SB.get('secret');
+var BATTLE_WINS = SB.get('bwins');
 
 var stampNames = {}; STAMPS.forEach(function(s){stampNames[s.name]=s});
 
-// ===== HELPERS =====
 function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 function pick(arr){return arr[rand(0,arr.length-1)]}
 function cls(n){return n.charAt(0).toUpperCase()+n.slice(1)}
 
-// ===== SEED COLLECTION =====
-if(Object.keys(COL).length===0){STAMPS.forEach(function(s){COL[s.name]={qty:0,dup:0}});ss('collection',COL)}
+// ===== HELPERS PARA PERSISTIR =====
+function saveAll(){
+  SB.set('credits',C);
+  SB.set('collection',COL);
+  SB.set('streak',STREAK);
+  SB.set('ach',ACH);
+  SB.set('pass',PASS);
+  SB.set('trades',TRADES);
+  SB.set('market',MARKET);
+  SB.set('guild',GUILD);
+  SB.set('secret',SECRET_UNLOCKED);
+  SB.set('bwins',BATTLE_WINS);
+  SB.set('dchal',DCHAL);
+}
 
 // ===== ECOSYSTEM ENGINE =====
 var ECO = {
@@ -283,7 +479,7 @@ var ECO = {
       COL[s.name].qty++;
     });
     for(var n in COL){var c=COL[n];c.dup=Math.max(0,c.qty-1)}
-    ss('collection',COL);
+    SB.set('collection',COL);
     this.checkAchievements();
     this.checkSecretAlbum();
     this.checkPassXP(stamps.length*5);
@@ -319,7 +515,7 @@ var ECO = {
       var p=this.albumProgress(slots);
       if(p.owned===p.total)completed++
     }
-    if(completed>=3&&!SECRET_UNLOCKED){SECRET_UNLOCKED=true;ss('secret',true);return true}
+    if(completed>=3&&!SECRET_UNLOCKED){SECRET_UNLOCKED=true;SB.set('secret',true);return true}
     return false;
   },
 
@@ -346,7 +542,7 @@ var ECO = {
         setTimeout(function(){showAchievement(a.icon,a.name,a.desc)},100)
       }
     });
-    if(changed)ss('ach',ACH);
+    if(changed)SB.set('ach',ACH);
   },
   initAchievements:function(){this.checkAchievements()},
 
@@ -355,7 +551,7 @@ var ECO = {
     PASS.xp=(PASS.xp||0)+xp;
     var needed=PASS.level*20;
     while(PASS.xp>=needed){PASS.xp-=needed;PASS.level++;needed=PASS.level*20}
-    ss('pass',PASS);
+    SB.set('pass',PASS);
   },
 
   // Streak
@@ -366,16 +562,16 @@ var ECO = {
     var yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);
     if(last.toDateString()===yesterday.toDateString()){STREAK.count++}else{STREAK.count=1}
     STREAK.last=today.getTime();STREAK.max=Math.max(STREAK.max,STREAK.count);
-    ss('streak',STREAK);
+    SB.set('streak',STREAK);
     // Streak reward
-    if(STREAK.count%5===0){C+=50;ss('credits',C);notif('Streak de '+STREAK.count+' dias! +50 creditos!')}
+    if(STREAK.count%5===0){C+=50;SB.set('credits',C);notif('Streak de '+STREAK.count+' dias! +50 creditos!')}
   },
 
   // Daily free pack
   claimDailyFree:function(){
     var today=new Date().toDateString();
     if(DAILY_FREE===today)return false;
-    DAILY_FREE=today;ss('daily_free',today);
+    DAILY_FREE=today;SB.set('daily_free',today);
     var res=this.openPack({Comum:60,Raro:25,Epico:12,Lendario:3},3);
     this.addStamps(res);
     notif('Pack gratuito diario aberto! +3 selos');
@@ -385,11 +581,11 @@ var ECO = {
   // Daily stamp (discounted)
   generateDailyStamp:function(){
     var today=new Date().toDateString();
-    if(DAILY_STAMP===today){return sg('daily_stamp_data',null)}
+    if(DAILY_STAMP===today){return SB.get('daily_stamp_data')}
     var stamp=pick(STAMPS);
     var discount=rand(20,50);
     var data={stamp:stamp,discount:discount,price:Math.max(10,Math.round(50*(1-discount/100)))};
-    ss('daily_stamp',today);ss('daily_stamp_data',data);
+    SB.set('daily_stamp',today);SB.set('daily_stamp_data',data);
     return data;
   },
 
@@ -406,7 +602,7 @@ var ECO = {
     var gained=result[rand(0,result.length-1)];
     if(!COL[gained.name])COL[gained.name]={qty:0,dup:0};
     COL[gained.name].qty++;
-    ss('collection',COL);
+    SB.set('collection',COL);
     this.checkAchievements();this.checkPassXP(30);
     return{success:true,consumed:stamp.name,rarity:rarity,gained:gained};
   },
@@ -446,7 +642,7 @@ var authMode='login';
 function openAuth(){document.getElementById('authModal').classList.add('active')}
 function closeAuth(){document.getElementById('authModal').classList.remove('active')}
 document.getElementById('navUser').addEventListener('click',function(){
-  if(U){U=null;localStorage.removeItem('sb4_user');updateNav();notif('Desconectado')}
+  if(U){SB.signOut();U=null;C=200;COL={};STAMPS.forEach(function(s){COL[s.name]={qty:0,dup:0}});updateNav();notif('Desconectado')}
   else openAuth()
 });
 document.getElementById('authClose').addEventListener('click',closeAuth);
@@ -457,11 +653,16 @@ document.getElementById('authToggle').addEventListener('click',function(){
   document.getElementById('authToggle').textContent=authMode==='login'?'Criar conta':'Ja tenho conta';
   document.getElementById('authError').textContent=''
 });
-document.getElementById('authBtn').addEventListener('click',function(){
+document.getElementById('authBtn').addEventListener('click',async function(){
   var e=document.getElementById('authEmail').value.trim(),p=document.getElementById('authPassword').value.trim();
   if(!e||!p){document.getElementById('authError').textContent='Preencha email e senha';return}
   document.getElementById('authError').textContent='';
-  U={email:e,id:'u'+Date.now()};ss('user',U);closeAuth();updateNav();notif('Bem-vindo, '+e.split('@')[0]+'!')
+  var result=authMode==='login'?await SB.signIn(e,p):await SB.signUp(e,p);
+  if(result.error){document.getElementById('authError').textContent=result.error;return}
+  U=SB.user;closeAuth();document.getElementById('authEmail').value='';document.getElementById('authPassword').value='';
+  C=SB.get('credits');COL=SB.get('collection');STREAK=SB.get('streak');ACH=SB.get('ach');PASS=SB.get('pass');
+  TRADES=SB.get('trades');MARKET=SB.get('market');GUILD=SB.get('guild');SECRET_UNLOCKED=SB.get('secret');BATTLE_WINS=SB.get('bwins');
+  updateNav();notif('Bem-vindo, '+e.split('@')[0]+'!')
 });
 
 function updateNav(){
@@ -636,7 +837,7 @@ function renderLoja(){
     document.getElementById('dailyStampBuy').onclick=function(){
       if(!U){openAuth();return}
       if(C<ds.price){notif('Creditos insuficientes!');return}
-      C-=ds.price;ss('credits',C);
+      C-=ds.price;SB.set('credits',C);
       ECO.addStamps([ds.stamp]);updateNav();notif(ds.stamp.name+' comprado!')
     }
   }
@@ -657,13 +858,13 @@ function buyPack(idx){
   if(p.price===0){
     var today=new Date().toDateString();
     if(DAILY_FREE===today){notif('Pack gratuito ja resgatado hoje!');return}
-    DAILY_FREE=today;ss('daily_free',today)
+    DAILY_FREE=today;SB.set('daily_free',today)
   }
 
-  if(p.price>0){C-=p.price;ss('credits',C);updateNav()}
+  if(p.price>0){C-=p.price;SB.set('credits',C);updateNav()}
 
   var res=ECO.openPack(p.w,p.qty);
-  PASS.totalOpened=(PASS.totalOpened||0)+1;ss('pass',PASS);
+  PASS.totalOpened=(PASS.totalOpened||0)+1;SB.set('pass',PASS);
   ECO.addStamps(res);
   showPackResults(p.name,res);
 }
@@ -756,7 +957,7 @@ document.getElementById('newTradeBtn').addEventListener('click',function(){
   if(!w)return;
   var wi=parseInt(w)-1;if(isNaN(wi)||!missing[wi]){notif('Invalido');return}
   var trade={id:'tr'+Date.now(),proposer:U.email||U.id,status:'pending',offering:{stamp:dups[oi].name,qty:1},requesting:{stamp:missing[wi].name,qty:1}};
-  TRADES.push(trade);ss('trades',TRADES);renderTrocas();notif('Troca criada!')
+  TRADES.push(trade);SB.set('trades',TRADES);renderTrocas();notif('Troca criada!')
 });
 function acceptTrade(id){
   for(var i=0;i<TRADES.length;i++){
@@ -766,13 +967,13 @@ function acceptTrade(id){
       COL[t.offering.stamp].qty--;COL[t.offering.stamp].dup=Math.max(0,COL[t.offering.stamp].qty-1);
       if(!COL[t.requesting.stamp])COL[t.requesting.stamp]={qty:0,dup:0};
       COL[t.requesting.stamp].qty++;COL[t.requesting.stamp].dup=Math.max(0,COL[t.requesting.stamp].qty-1);
-      t.status='accepted';C+=10;ss('credits',C);ss('collection',COL);ss('trades',TRADES);
+      t.status='accepted';C+=10;SB.set('credits',C);SB.set('collection',COL);SB.set('trades',TRADES);
       ECO.checkAchievements();renderAll();notif('Troca aceita! +10 creditos')
     }
   }
 }
 function rejectTrade(id){
-  for(var i=0;i<TRADES.length;i++){if(TRADES[i].id===id){TRADES[i].status='rejected';ss('trades',TRADES);renderTrocas();notif('Troca recusada')}}
+  for(var i=0;i<TRADES.length;i++){if(TRADES[i].id===id){TRADES[i].status='rejected';SB.set('trades',TRADES);renderTrocas();notif('Troca recusada')}}
 }
 function renderAll(){renderDashboard();renderAlbum();renderColecao();renderLoja();renderForja();renderTrocas();renderMercado();renderDesafios();renderRanking();renderBatalha();renderGuilda();updateNav()}
 
@@ -804,7 +1005,7 @@ document.getElementById('sellBtn').addEventListener('click',function(){
   var p=parseInt(prompt('Preco por unidade em creditos:'))||10;
   COL[dups[oi].name].qty-=q;COL[dups[oi].name].dup=Math.max(0,COL[dups[oi].name].qty-1);
   MARKET.push({id:'m'+Date.now(),seller:U.email||U.id,stamp:dups[oi].name,qty:q,price:p});
-  ss('collection',COL);ss('market',MARKET);renderMercado();renderColecao();notif('Listado no mercado!')
+  SB.set('collection',COL);SB.set('market',MARKET);renderMercado();renderColecao();notif('Listado no mercado!')
 });
 function buyMarket(i){
   if(!U){openAuth();return}
@@ -813,7 +1014,7 @@ function buyMarket(i){
   C-=m.price;
   if(!COL[m.stamp])COL[m.stamp]={qty:0,dup:0};
   COL[m.stamp].qty+=m.qty;COL[m.stamp].dup=Math.max(0,COL[m.stamp].qty-1);
-  MARKET.splice(i,1);ss('credits',C);ss('collection',COL);ss('market',MARKET);
+  MARKET.splice(i,1);SB.set('credits',C);SB.set('collection',COL);SB.set('market',MARKET);
   ECO.checkAchievements();renderAll();notif('Comprado!')
 }
 
@@ -821,15 +1022,15 @@ function buyMarket(i){
 var CHALLENGES=[
   {id:'c1',name:'Abertura de Envelopes',desc:'Abra 3 envelopes hoje',icon:'\u{1F4E8}',check:function(){return PASS.totalOpened>=3},reward:30},
   {id:'c2',name:'Colecionador Diario',desc:'Colecione 5 selos novos hoje',icon:'\u{1F4E6}',check:function(){var t=0;for(var n in COL)t+=COL[n].qty;return t>=5},reward:50},
-  {id:'c3',name:'Forjador',desc:'Forje 1 selo hoje',icon:'\u{1F525}',check:function(){return sg('forged_today',0)>=1},reward:40},
+  {id:'c3',name:'Forjador',desc:'Forje 1 selo hoje',icon:'\u{1F525}',check:function(){return (SB.get('forged_today')||0)>=1},reward:40},
   {id:'c4',name:'Negociante',desc:'Complete 1 troca hoje',icon:'\u{1F504}',check:function(){return TRADES.some(function(t){return t.status==='accepted'})},reward:60},
-  {id:'c5',name:'Guerreiro',desc:'Venca 1 batalha hoje',icon:'\u2694\uFE0F',check:function(){return sg('battles_today',0)>=1},reward:35},
+  {id:'c5',name:'Guerreiro',desc:'Venca 1 batalha hoje',icon:'\u2694\uFE0F',check:function(){return (SB.get('battles_today')||0)>=1},reward:35},
 ];
 
 function renderDesafios(){
   var el=document.getElementById('desafiosGrid');
   var today=new Date().toDateString();
-  var completed=sg('dchal_done_'+today,[]);
+  var completed=(SB.get('dchal_done_'+today)||[]);
   var html='';
   CHALLENGES.forEach(function(c){
     var done=completed.indexOf(c.id)>-1;
@@ -849,16 +1050,16 @@ function claimChallenge(id){
   var c=CHALLENGES.find(function(x){return x.id===id});if(!c)return;
   if(!c.check()){notif('Requisito nao atendido!');return}
   var today=new Date().toDateString();
-  var done=sg('dchal_done_'+today,[]);
+  var done=(SB.get('dchal_done_'+today)||[]);
   if(done.indexOf(id)>-1){notif('Ja feito hoje!');return}
-  done.push(id);ss('dchal_done_'+today,done);
-  C+=c.reward;ss('credits',C);ECO.checkPassXP(15);renderDesafios();updateNav();notif('Desafio completo! +'+c.reward+' creditos')
+  done.push(id);SB.set('dchal_done_'+today,done);
+  C+=c.reward;SB.set('credits',C);ECO.checkPassXP(15);renderDesafios();updateNav();notif('Desafio completo! +'+c.reward+' creditos')
 }
 
 // ----- RANKING -----
 function renderRanking(){
   var el=document.getElementById('rankingList');
-  var players=sg('ranking',[]);
+  var players=SB.get('ranking')||[];
   // Add current user
   if(U){
     var total=0;for(var n in COL)total+=COL[n].qty;
@@ -867,7 +1068,7 @@ function renderRanking(){
     else players.push({id:U.id,name:U.email?.split('@')[0]||'Anon',score:total,ach:ACH.length});
   }
   players.sort(function(a,b){return b.score-a.score});
-  players=players.slice(0,20);ss('ranking',players);
+  players=players.slice(0,20);SB.set('ranking',players);
 
   var html='';
   players.forEach(function(p,i){
@@ -914,12 +1115,12 @@ function selectBattleStamp(name){
     '<div style="font-size:1.5rem;display:flex;align-items:center">VS</div>'+
     '<div>'+(res.crit2?'<div style="color:#f72585;font-size:0.6rem">CRITICO!</div>':'')+'<div style="font-size:2rem">'+opp.emoji+'</div><div style="font-size:0.65rem;color:#ccc">'+res.power2+'</div></div>'+
     '</div>';
-  if(res.winner==='p1'){html+='<div style="color:var(--cyan);font-size:1rem">VITORIA!</div>';C+=15;var bt=sg('battles_today',0)+1;ss('battles_today',bt);BATTLE_WINS++;ss('bwins',BATTLE_WINS);ECO.checkAchievements()}
+  if(res.winner==='p1'){html+='<div style="color:var(--cyan);font-size:1rem">VITORIA!</div>';C+=15;var bt=(SB.get('battles_today')||0)+1;SB.set('battles_today',bt);BATTLE_WINS++;SB.set('bwins',BATTLE_WINS);ECO.checkAchievements()}
   else if(res.winner==='p2')html+='<div style="color:#f72585;font-size:1rem">DERROTA...</div>';
   else html+='<div style="color:var(--gold);font-size:1rem">EMPATE!</div>';
   html+='</div><button class="store-btn" style="font-size:0.6rem;margin-top:12px" onclick="resetBattle()">NOVA BATALHA</button>';
   document.getElementById('batalhaContent').innerHTML=html;
-  if(res.winner==='p1'){ss('credits',C);updateNav();notif('Vitoria! +15 creditos')}
+  if(res.winner==='p1'){SB.set('credits',C);updateNav();notif('Vitoria! +15 creditos')}
 }
 function resetBattle(){battleState={phase:'select',myStamp:null,opponent:null};renderBatalha()}
 
@@ -952,7 +1153,7 @@ function createGuild(){
   if(!U){openAuth();return}
   var n=prompt('Nome da Guilda:')||'Guilda '+U.email?.split('@')[0];
   GUILD={name:n,emoji:'\u{1F3F0}',leader:U.email||U.id,members:1,contributed:{}};
-  ss('guild',GUILD);renderGuilda();notif('Guilda '+n+' criada!')
+  SB.set('guild',GUILD);renderGuilda();notif('Guilda '+n+' criada!')
 }
 function contributeGuild(){
   if(!GUILD||!U)return;
@@ -964,7 +1165,7 @@ function contributeGuild(){
   var oi=parseInt(o)-1;if(isNaN(oi)||!dups[oi]){notif('Invalido');return}
   COL[dups[oi].name].qty--;COL[dups[oi].name].dup=Math.max(0,COL[dups[oi].name].qty-1);
   GUILD.contributed[dups[oi].name]=true;
-  ss('collection',COL);ss('guild',GUILD);renderGuilda();renderColecao();notif('Contribuido!')
+  SB.set('collection',COL);SB.set('guild',GUILD);renderGuilda();renderColecao();notif('Contribuido!')
 }
 
 // ===== BOOT =====
@@ -990,7 +1191,12 @@ async function runBoot(){
   }
   var c=document.createElement('span');c.className='boot-cursor';
   c.style.animationDelay=((bootLines.length+1)*0.06)+'s';term.appendChild(c);
-  setTimeout(function(){overlay.classList.add('hidden');setTimeout(function(){overlay.remove()},800)},(bootLines.length+2)*0.06*1000+600);
+  setTimeout(function(){
+    overlay.classList.add('hidden');
+    setTimeout(function(){overlay.remove()},800);
+    // Inicia conexao Supabase em background
+    SB.init();
+  },(bootLines.length+2)*0.06*1000+600);
 }
 
 // ===== PARTICLES (Pirlipimpim - suave como po de fada) =====

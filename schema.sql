@@ -230,3 +230,70 @@ CREATE POLICY "TradeItems involved" ON trade_items
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM trades t WHERE t.id = trade_items.trade_id AND (t.proposer_id = auth.uid() OR t.responder_id = auth.uid()))
   );
+
+-- ============================================================
+-- v4.0 Missing tables
+-- ============================================================
+
+-- 13. MARKET_LISTINGS (Venda de duplicatas)
+CREATE TABLE IF NOT EXISTS market_listings (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  seller_id  UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  stamp_name TEXT NOT NULL,
+  quantity   INTEGER NOT NULL DEFAULT 1,
+  price      INTEGER NOT NULL DEFAULT 10,
+  status     TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 14. USER_ACHIEVEMENTS (Conquistas desbloqueadas)
+CREATE TABLE IF NOT EXISTS user_achievements (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  ach_id      TEXT NOT NULL,
+  unlocked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, ach_id)
+);
+
+-- 15. USER_STREAKS (Streak de login)
+CREATE TABLE IF NOT EXISTS user_streaks (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  count       INTEGER NOT NULL DEFAULT 0,
+  max_count   INTEGER NOT NULL DEFAULT 0,
+  last_login  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 16. USER_SEASON_PASS (Progresso no passe)
+CREATE TABLE IF NOT EXISTS user_season_pass (
+  id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  level   INTEGER NOT NULL DEFAULT 1,
+  xp      INTEGER NOT NULL DEFAULT 0
+);
+
+-- RLS para novas tabelas
+ALTER TABLE market_listings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_streaks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_season_pass ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "MarketListings read" ON market_listings;
+CREATE POLICY "MarketListings read" ON market_listings
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "MarketListings own" ON market_listings;
+CREATE POLICY "MarketListings own" ON market_listings
+  FOR ALL USING (auth.uid() = seller_id) WITH CHECK (auth.uid() = seller_id);
+
+DROP POLICY IF EXISTS "UserAchievements own" ON user_achievements;
+CREATE POLICY "UserAchievements own" ON user_achievements
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "UserStreaks own" ON user_streaks;
+CREATE POLICY "UserStreaks own" ON user_streaks
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "UserSeasonPass own" ON user_season_pass;
+CREATE POLICY "UserSeasonPass own" ON user_season_pass
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
