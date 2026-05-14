@@ -3,46 +3,99 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>STAMPBIT - Portal de Ativos Digitais</title>
+<title>STAMPBIT - Album Digital</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- BOOTING SEQUENCE -->
-<div class="boot-overlay" id="bootOverlay">
-  <div class="boot-terminal" id="bootTerminal"></div>
-</div>
-
-<!-- PARTICLES -->
+<div class="boot-overlay" id="bootOverlay"><div class="boot-terminal" id="bootTerminal"></div></div>
 <canvas id="particles-canvas"></canvas>
-
-<!-- BACKGROUND -->
 <div class="bg-void"></div>
 <div class="grid-overlay"></div>
 
-<!-- HEADER -->
-<header>
-  <div class="logo">
-    <span class="logo-stamp">stamp</span><span class="logo-bit">bit</span>
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-box">
+    <span class="modal-close" id="authClose">&times;</span>
+    <h2 id="authTitle">ACESSO</h2>
+    <div class="modal-error" id="authError"></div>
+    <input class="modal-input" id="authEmail" type="email" placeholder="EMAIL">
+    <input class="modal-input" id="authPassword" type="password" placeholder="SENHA">
+    <button class="modal-btn" id="authBtn">ENTRAR</button>
+    <div class="modal-toggle" id="authToggle">Criar conta</div>
   </div>
-  <div class="header-status">SECURE // v2.4.1</div>
-</header>
-
-<!-- TERMINAL STATUS -->
-<div class="terminal-bar">
-  <span id="terminalText">> STAMPBIT_OS_V2 // DATABASE: SUPABASE_ONLINE // ENCRYPT: ACTIVE</span><span class="cursor"></span>
 </div>
 
-<!-- GRID -->
-<main class="grid-container" id="stampGrid"></main>
+<!-- PACK OPENING OVERLAY -->
+<div class="pack-overlay" id="packOverlay">
+  <div class="pack-overlay-title" id="packTitle">ABRINDO ENVELOPE...</div>
+  <div class="pack-overlay-results" id="packResults"></div>
+  <button class="pack-overlay-close" id="packClose">FECHAR</button>
+</div>
 
-<!-- FORGE BUTTON -->
-<button class="forge-btn" id="forgeBtn">[ FORJAR_STAMPBIT ]</button>
+<!-- HEADER -->
+<header>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="logo"><span class="logo-stamp">stamp</span><span class="logo-bit">bit</span></div>
+    <div class="header-status">v2.4.1</div>
+  </div>
+  <div class="terminal-bar" style="padding:0;animation:none;opacity:1">
+    <span id="terminalText">> STAMPBIT_OS_V2 // ECOSYSTEM: ONLINE</span><span class="cursor"></span>
+  </div>
+</header>
 
-<!-- FOOTER -->
-<footer>DESIGNED COMMAND SOLUÇÕES TECNOLOGIA // PROTOCOLO ALLBIONICS // 2026</footer>
+<!-- NAV -->
+<nav class="nav-bar">
+  <button class="nav-tab active" data-view="album">[ Album ]</button>
+  <button class="nav-tab" data-view="colecao">[ Colecao ]</button>
+  <button class="nav-tab" data-view="loja">[ Loja ]</button>
+  <button class="nav-tab" data-view="trocas">[ Trocas ]</button>
+  <span class="nav-spacer"></span>
+  <span class="nav-credits" id="navCredits">&#9733; 100</span>
+  <span class="nav-user" id="navUser">LOGIN</span>
+</nav>
+
+<!-- VIEW: ALBUM -->
+<section class="view active" id="viewAlbum">
+  <div class="view-title">&#128214; Album de Selos</div>
+  <div class="view-subtitle">Colecione todos os selos de cada album tematico</div>
+  <div id="albumList"></div>
+  <div id="albumSlots" style="display:none">
+    <div class="slots-header">
+      <span class="slots-back" id="slotsBack">&larr; Voltar</span>
+      <span style="font-family:var(--font-mono);font-size:0.65rem;color:#666" id="slotsProgress">0/0</span>
+    </div>
+    <div class="slots-grid" id="slotsGrid"></div>
+  </div>
+</section>
+
+<!-- VIEW: COLECAO -->
+<section class="view" id="viewColecao">
+  <div class="view-title">&#128188; Minha Colecao</div>
+  <div class="view-subtitle">Todos os selos que voce possui, incluindo duplicatas</div>
+  <div id="colecaoGrid" class="colecao-grid"></div>
+</section>
+
+<!-- VIEW: LOJA -->
+<section class="view" id="viewLoja">
+  <div class="view-title">&#128230; Loja de Envelopes</div>
+  <div class="view-subtitle">Compre envelopes com selos aleatorios e complete seu album!</div>
+  <div class="store-grid" id="storeGrid"></div>
+</section>
+
+<!-- VIEW: TROCAS -->
+<section class="view" id="viewTrocas">
+  <div class="view-title" style="display:flex;justify-content:space-between;align-items:center">
+    <span>&#128260; Central de Trocas</span>
+    <button class="trade-btn primary" id="newTradeBtn">+ Nova Troca</button>
+  </div>
+  <div class="view-subtitle">Troque selos repetidos com outros colecionadores</div>
+  <div id="tradesList"></div>
+</section>
+
+<footer>DESIGNED COMMAND SOLUCOES TECNOLOGIA // PROTOCOLO ALLBIONICS // 2026</footer>
 
 <script>
 // ===== ENV =====
@@ -51,338 +104,664 @@ window.STAMPBIT_ENV = {
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxscWZuZnVrcnlodW1wbW9kcXRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NzkwMTksImV4cCI6MjA5NDM1NTAxOX0.K7sqJ4iPsVVy5SD4q7UcRoP-YJKaJEzU5_Y3Y9A_uKI'
 };
 
-// ===== DATABASE MODULE =====
+// ===== STAMP DATA =====
+const STAMP_EMOJIS = {
+  'Genesis Block':'\u{1F537}','Neon Circuit':'\u26A1','Quantum Core':'\u{1F9CA}',
+  'Void Walker':'\u{1F311}','Cyber Forge':'\u{1F525}','Digital Ghost':'\u{1F47B}',
+  'Holo Matrix':'\u{1F48E}','Steel Phantom':'\u2699\uFE0F','Plasma Gate':'\u{1F52E}',
+  'Carbon Eye':'\u{1F441}\uFE0F','Gold Protocol':'\u{1F3C6}','Shadow Node':'\u{1F576}\uFE0F'
+};
+const STAMP_ALL = [
+  {name:'Genesis Block',emoji:'\u{1F537}',rarity:'Lendario',total:100},
+  {name:'Neon Circuit',emoji:'\u26A1',rarity:'Epico',total:250},
+  {name:'Quantum Core',emoji:'\u{1F9CA}',rarity:'Raro',total:500},
+  {name:'Void Walker',emoji:'\u{1F311}',rarity:'Lendario',total:100},
+  {name:'Cyber Forge',emoji:'\u{1F525}',rarity:'Epico',total:250},
+  {name:'Digital Ghost',emoji:'\u{1F47B}',rarity:'Comum',total:1000},
+  {name:'Holo Matrix',emoji:'\u{1F48E}',rarity:'Raro',total:500},
+  {name:'Steel Phantom',emoji:'\u2699\uFE0F',rarity:'Epico',total:250},
+  {name:'Plasma Gate',emoji:'\u{1F52E}',rarity:'Raro',total:500},
+  {name:'Carbon Eye',emoji:'\u{1F441}\uFE0F',rarity:'Comum',total:1000},
+  {name:'Gold Protocol',emoji:'\u{1F3C6}',rarity:'Lendario',total:100},
+  {name:'Shadow Node',emoji:'\u{1F576}\uFE0F',rarity:'Comum',total:1000}
+];
+const STAMP_RARITY_ORDER = { 'Comum':0,'Raro':1,'Epico':2,'Lendario':3 };
+const RARITY_COLORS = { 'Comum':'#888','Raro':'#4cc9f0','Epico':'#9d4edd','Lendario':'#f72585' };
+
+// ===== LOCAL STATE =====
+let localUser = null;
+let localCredits = 100;
+let localCollection = {};
+let localAlbums = [];
+let localAlbumSlots = {};
+let localTrades = [];
+
+function lsGet(k,d){try{var v=localStorage.getItem('sb_'+k);return v?JSON.parse(v):d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem('sb_'+k,JSON.stringify(v))}catch(e){}}
+
+localUser = lsGet('user',null);
+localCredits = lsGet('credits',100);
+localCollection = lsGet('collection',{});
+localTrades = lsGet('trades',[]);
+
+// ===== DB MODULE =====
 const STAMPBIT_DB = (() => {
-  let client = null;
-  let ready = false;
-
+  let client = null, ready = false;
   function getConfig() {
-    const url = window.STAMPBIT_ENV?.SUPABASE_URL;
-    const key = window.STAMPBIT_ENV?.SUPABASE_ANON_KEY;
-    if (!url || !key) {
-      console.error('[STAMPBIT] Variaveis de ambiente nao encontradas');
-      return null;
-    }
-    return { url, key };
+    var u = window.STAMPBIT_ENV?.SUPABASE_URL, k = window.STAMPBIT_ENV?.SUPABASE_ANON_KEY;
+    return u && k ? { url: u, key: k } : null;
   }
-
   async function init() {
-    const config = getConfig();
-    if (!config) return { ready: false };
+    var c = getConfig(); if (!c) return { ready: false };
     try {
-      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-      client = createClient(config.url, config.key, {
+      var m = await import('https://esm.sh/@supabase/supabase-js@2');
+      client = m.createClient(c.url, c.key, {
         auth: { persistSession: true, autoRefreshToken: true },
         global: { headers: { 'x-application-name': 'STAMPBIT' } }
       });
       ready = true;
-      console.log('%c> STAMPBIT_SYSTEM_READY // SUPABASE_CLIENT: ONLINE', 'color: #4cc9f0; font-family: monospace; font-size: 12px;');
+      console.log('[STAMPBIT] Supabase client ready');
       return { ready: true, client };
-    } catch (err) {
-      console.warn('[STAMPBIT] Supabase client indisponivel (modo offline):', err.message);
-      return { ready: false, error: err.message };
+    } catch(e) {
+      console.warn('[STAMPBIT] Offline mode:', e.message);
+      return { ready: false };
     }
   }
-
   function getClient() { return client; }
   function isReady() { return ready; }
-
   return { init, getClient, isReady };
 })();
 
 // ===== AUTH MODULE =====
 const STAMPBIT_AUTH = (() => {
-  let currentUser = null;
-
+  let currentUser = localUser;
   async function signIn(email, password) {
-    const db = STAMPBIT_DB.getClient();
-    if (!db) return { error: 'Database not initialized' };
-    const { data, error } = await db.auth.signInWithPassword({ email, password });
-    if (!error) currentUser = data.user;
-    return { user: data?.user, error };
+    var db = STAMPBIT_DB.getClient();
+    if (db) {
+      var r = await db.auth.signInWithPassword({ email, password });
+      if (!r.error) { currentUser = r.data.user; localUser = r.data.user; lsSet('user',r.data.user); }
+      return r.data?.user ? { user: r.data.user } : { error: r.error?.message || 'Falha no login' };
+    }
+    // Offline fallback
+    if (email && password) {
+      currentUser = { id: 'off_'+Date.now(), email: email };
+      localUser = currentUser; lsSet('user',currentUser);
+      return { user: currentUser };
+    }
+    return { error: 'Database offline' };
   }
-
   async function signUp(email, password) {
-    const db = STAMPBIT_DB.getClient();
-    if (!db) return { error: 'Database not initialized' };
-    const { data, error } = await db.auth.signUp({ email, password, options: { data: { app: 'STAMPBIT' } } });
-    return { user: data?.user, error };
+    var db = STAMPBIT_DB.getClient();
+    if (db) {
+      var r = await db.auth.signUp({ email, password, options: { data: { app: 'STAMPBIT' } } });
+      if (!r.error) { currentUser = r.data.user; localUser = r.data.user; lsSet('user',r.data.user); }
+      return r.data?.user ? { user: r.data.user } : { error: r.error?.message || 'Falha no cadastro' };
+    }
+    return signIn(email, password);
   }
-
   async function signOut() {
-    const db = STAMPBIT_DB.getClient();
-    if (!db) return;
-    await db.auth.signOut();
-    currentUser = null;
+    var db = STAMPBIT_DB.getClient();
+    if (db) await db.auth.signOut();
+    currentUser = null; localUser = null;
+    localStorage.removeItem('sb_user');
+    localStorage.removeItem('sb_credits');
+    localStorage.removeItem('sb_collection');
+    localStorage.removeItem('sb_trades');
   }
-
-  async function getSession() {
-    const db = STAMPBIT_DB.getClient();
-    if (!db) return null;
-    const { data } = await db.auth.getSession();
-    currentUser = data?.session?.user ?? null;
-    return currentUser;
-  }
-
-  function getUser() { return currentUser; }
-
-  function onAuthChange(callback) {
-    const db = STAMPBIT_DB.getClient();
-    if (!db) return;
-    db.auth.onAuthStateChange((event, session) => {
-      currentUser = session?.user ?? null;
-      callback(event, currentUser);
-    });
-  }
-
-  return { signIn, signUp, signOut, getSession, getUser, onAuthChange };
+  function getUser() { return currentUser || localUser; }
+  function isLoggedIn() { return !!(currentUser || localUser); }
+  return { signIn, signUp, signOut, getUser, isLoggedIn };
 })();
 
-// ===== ENGINE MODULE =====
-const STAMPBIT_ENGINE = (() => {
-  function generateSerial(prefix, number, total) {
-    const padded = String(number).padStart(3, '0');
-    return `${prefix}-${padded}/${total}`;
-  }
+// ===== ECOSYSTEM ENGINE =====
+const STAMP_ECO = (() => {
+  function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-  async function forgeStamp(stampId) {
-    const db = STAMPBIT_DB.getClient();
-    const user = STAMPBIT_AUTH.getUser();
-    if (!db) return { error: 'Database offline' };
-    if (!user) return { error: 'Usuario nao autenticado' };
-    try {
-      const { data: stamp, error: stampErr } = await db.from('stamps').select('*').eq('id', stampId).single();
-      if (stampErr) throw stampErr;
-      const { count, error: countErr } = await db.from('inventory').select('*', { count: 'exact', head: true }).eq('stamp_id', stampId);
-      if (countErr) throw countErr;
-      const nextSerial = (count || 0) + 1;
-      if (nextSerial > stamp.total_supply) return { error: 'Supply esgotado deste selo' };
-      const { data: forged, error: forgeErr } = await db.from('inventory').insert({ user_id: user.id, stamp_id: stampId, serial_number: nextSerial }).select().single();
-      if (forgeErr) throw forgeErr;
-      console.log('%c> STAMPBIT_FORGED // ' + stamp.name + ' // ' + generateSerial(stamp.serial_prefix, nextSerial, stamp.total_supply), 'color: #9d4edd; font-family: monospace;');
-      return { success: true, stamp: forged, serial: generateSerial(stamp.serial_prefix, nextSerial, stamp.total_supply), hash: forged.hash_validation };
-    } catch (err) {
-      console.error('[STAMPBIT] Erro na forja:', err.message);
-      return { error: err.message };
-    }
-  }
+  // Open a booster pack
+  function openPack(packDef) {
+    var weights = packDef.weights || { 'Comum':60,'Raro':25,'Epico':12,'Lendario':3 };
+    var totalW = Object.values(weights).reduce(function(a,b){return a+b},0);
+    var results = [];
+    var available = STAMP_ALL.filter(function(s){return s.total > 0});
 
-  async function getUserStamps() {
-    const db = STAMPBIT_DB.getClient();
-    const user = STAMPBIT_AUTH.getUser();
-    if (!db || !user) return [];
-    const { data, error } = await db.from('inventory').select('*, stamps(*)').eq('user_id', user.id).order('forged_at', { ascending: false });
-    if (error) { console.error('[STAMPBIT] Erro ao buscar inventario:', error.message); return []; }
-    return data || [];
-  }
-
-  function validateHash(hash) { return /^[a-f0-9]{64}$/.test(hash); }
-
-  return { forgeStamp, getUserStamps, generateSerial, validateHash };
-})();
-
-// ===== BOOTING SEQUENCE =====
-const bootLines = [
-  { text: '> STAMPBIT_OS_V2 // INITIALIZING SYSTEM...', cls: '' },
-  { text: '> CHECKING INTEGRITY MODULES...', cls: '' },
-  { text: '  [OK] KERNEL // 0x7C00', cls: 'ok' },
-  { text: '  [OK] MEMORY // 64TB ALLOCATED', cls: 'ok' },
-  { text: '  [OK] ENCRYPT // AES-256-GCM', cls: 'ok' },
-  { text: '> CONNECTING TO SUPABASE...', cls: '' },
-  { text: '  [OK] DATABASE // SUPABASE_ONLINE', cls: 'ok' },
-  { text: '  [OK] AUTH // SECURE_CHANNEL', cls: 'ok' },
-  { text: '> LOADING STAMP CATALOG...', cls: '' },
-  { text: '  [OK] 12 UNITS // READY', cls: 'ok' },
-  { text: '', cls: '' },
-  { text: '> STAMPBIT_SYSTEM_READY // ALL SYSTEMS NOMINAL', cls: 'highlight' },
-];
-
-async function runBootSequence() {
-  const terminal = document.getElementById('bootTerminal');
-  const overlay = document.getElementById('bootOverlay');
-
-  for (let i = 0; i < bootLines.length; i++) {
-    const line = bootLines[i];
-    const div = document.createElement('div');
-    div.className = 'boot-line';
-    if (line.cls) div.classList.add(line.cls);
-    div.textContent = line.text;
-    div.style.animationDelay = `${i * 0.12}s`;
-    terminal.appendChild(div);
-  }
-
-  const cursor = document.createElement('span');
-  cursor.className = 'boot-cursor';
-  cursor.style.animationDelay = `${(bootLines.length + 1) * 0.12}s`;
-  terminal.appendChild(cursor);
-
-  const totalDelay = (bootLines.length + 2) * 0.12 + 0.8;
-
-  setTimeout(() => {
-    overlay.classList.add('hidden');
-    setTimeout(() => overlay.remove(), 800);
-  }, totalDelay * 1000);
-
-  // Init DB in background (nao bloqueia a UI)
-  STAMPBIT_DB.init().then(function(res) {
-    var t = document.getElementById('terminalText');
-    if (res.ready) {
-      t.textContent = '> STAMPBIT_OS_V2 // DATABASE: SUPABASE_ONLINE // ENCRYPT: ACTIVE';
-    } else {
-      t.textContent = '> STAMPBIT_OS_V2 // DATABASE: PENDING_SETUP // ENCRYPT: ACTIVE';
-    }
-  });
-}
-
-runBootSequence();
-
-// ===== STAMP DATA =====
-const STAMP_EMOJIS = {
-  'Genesis Block': '🔷', 'Neon Circuit': '⚡', 'Quantum Core': '🧊',
-  'Void Walker': '🌑', 'Cyber Forge': '🔥', 'Digital Ghost': '👻',
-  'Holo Matrix': '💎', 'Steel Phantom': '⚙️', 'Plasma Gate': '🔮',
-  'Carbon Eye': '👁️', 'Gold Protocol': '🏆', 'Shadow Node': '🕶️'
-};
-const STAMP_FALLBACK = [
-  { name:'Genesis Block',emoji:'🔷',rarity:'Lendario',total:100 },
-  { name:'Neon Circuit',emoji:'⚡',rarity:'Epico',total:250 },
-  { name:'Quantum Core',emoji:'🧊',rarity:'Raro',total:500 },
-  { name:'Void Walker',emoji:'🌑',rarity:'Lendario',total:100 },
-  { name:'Cyber Forge',emoji:'🔥',rarity:'Epico',total:250 },
-  { name:'Digital Ghost',emoji:'👻',rarity:'Comum',total:1000 },
-  { name:'Holo Matrix',emoji:'💎',rarity:'Raro',total:500 },
-  { name:'Steel Phantom',emoji:'⚙️',rarity:'Epico',total:250 },
-  { name:'Plasma Gate',emoji:'🔮',rarity:'Raro',total:500 },
-  { name:'Carbon Eye',emoji:'👁️',rarity:'Comum',total:1000 },
-  { name:'Gold Protocol',emoji:'🏆',rarity:'Lendario',total:100 },
-  { name:'Shadow Node',emoji:'🕶️',rarity:'Comum',total:1000 }
-];
-
-function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min}
-function serializeNumber(n,t){return '#'+String(n).padStart(3,'0')+'/'+t}
-function generateHash(){var c='0123456789ABCDEFabcdef',h='0x',i;for(i=0;i<16;i++)h+=c[rand(0,c.length-1)];return h}
-function generatePCB(){var p=[],i,c,x1,y1,x2,y2,cx,cy;for(i=0,c=rand(4,8);i<c;i++){x1=rand(10,90);y1=rand(10,90);x2=rand(10,90);y2=rand(10,90);cx=(x1+x2)/2+rand(-20,20);cy=(y1+y2)/2+rand(-20,20);p.push('<path d="M'+x1+' '+y1+' Q'+cx+' '+cy+','+x2+' '+y2+'" stroke="#4cc9f0" stroke-width="'+rand(1,2)+'" fill="none" opacity="0.3"/>')}for(i=0,c=rand(3,6);i<c;i++){p.push('<circle cx="'+rand(15,85)+'" cy="'+rand(15,85)+'" r="'+rand(2,4)+'" fill="#4cc9f0" opacity="0.25"/>')}return p.join('\n')}
-
-function renderCards(data) {
-  var grid = document.getElementById('stampGrid');
-  grid.innerHTML = '';
-  data.forEach(function(stamp, idx) {
-    var serial = serializeNumber(idx + 1, stamp.total);
-    var hash = generateHash();
-    var pcb = generatePCB();
-    var card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML =
-      '<div class="pcb-overlay"><svg viewBox="0 0 100 100" preserveAspectRatio="none">' + pcb + '</svg></div>' +
-      '<div class="edge-glow"></div>' +
-      '<div class="card-content">' +
-        '<div class="card-header"><div class="card-title">' + stamp.name + '</div><div class="card-badge">' + stamp.rarity + '</div></div>' +
-        '<div class="card-thumb">' + stamp.emoji + '</div>' +
-        '<div class="card-footer"><span class="card-serial">' + serial + '</span><span class="card-hash">' + hash + '</span></div>' +
-      '</div>' +
-      '<div class="card-rarity">' + stamp.rarity.toUpperCase() + '</div>';
-    grid.appendChild(card);
-  });
-}
-
-async function loadStamps() {
-  var db = STAMPBIT_DB.getClient();
-  if (db) {
-    try {
-      var { data, error } = await db.from('stamps').select('*');
-      if (!error && data && data.length) {
-        var mapped = data.map(function(s) {
-          return { name: s.name, emoji: STAMP_EMOJIS[s.name] || '🔶', rarity: s.rarity, total: s.total_supply, id: s.id };
-        });
-        renderCards(mapped);
-        document.getElementById('terminalText').textContent = '> STAMPBIT_OS_V2 // DATABASE: SUPABASE_ONLINE // ' + mapped.length + ' STAMPS_LOADED';
-        return;
+    for (var i = 0; i < packDef.qty; i++) {
+      var roll = rand(1, totalW);
+      var cumulative = 0;
+      var chosenRarity = 'Comum';
+      for (var r in weights) {
+        cumulative += weights[r];
+        if (roll <= cumulative) { chosenRarity = r; break; }
       }
-    } catch(e) {}
+      var pool = available.filter(function(s){return s.rarity === chosenRarity});
+      var stamp = pool.length ? pool[rand(0,pool.length-1)] : available[rand(0,available.length-1)];
+      results.push({ name: stamp.name, emoji: stamp.emoji, rarity: stamp.rarity });
+    }
+    return results;
   }
-  renderCards(STAMP_FALLBACK);
+
+  // Add stamps to collection
+  function addToCollection(stamps) {
+    for (var i = 0; i < stamps.length; i++) {
+      var s = stamps[i];
+      if (!localCollection[s.name]) {
+        localCollection[s.name] = { qty: 0, dup: 0 };
+      }
+      localCollection[s.name].qty++;
+    }
+    // Recalculate duplicates: qty > 1 means extras
+    for (var name in localCollection) {
+      var c = localCollection[name];
+      c.dup = Math.max(0, c.qty - 1);
+    }
+    lsSet('collection', localCollection);
+  }
+
+  // Get collection stats for album
+  function getAlbumStats(albumStamps) {
+    var owned = 0, total = albumStamps.length;
+    for (var i = 0; i < albumStamps.length; i++) {
+      var s = albumStamps[i];
+      if (localCollection[s.name] && localCollection[s.name].qty > 0) owned++;
+    }
+    return { owned: owned, total: total, pct: total ? Math.round(owned/total*100) : 0 };
+  }
+
+  // Get all stamps with collection data
+  function getCollectionView() {
+    var list = [];
+    for (var i = 0; i < STAMP_ALL.length; i++) {
+      var s = STAMP_ALL[i];
+      var c = localCollection[s.name] || { qty: 0, dup: 0 };
+      list.push({ name: s.name, emoji: s.emoji, rarity: s.rarity, qty: c.qty, dup: c.dup });
+    }
+    list.sort(function(a,b){
+      if (a.qty !== b.qty) return b.qty - a.qty;
+      return STAMP_RARITY_ORDER[b.rarity] - STAMP_RARITY_ORDER[a.rarity];
+    });
+    return list;
+  }
+
+  // Create trade proposal
+  function createTrade(offerStamp, offerQty, wantStamp, wantQty) {
+    var user = STAMPBIT_AUTH.getUser();
+    if (!user) return { error: 'Faca login primeiro' };
+    if (!localCollection[offerStamp] || localCollection[offerStamp].dup < offerQty) {
+      return { error: 'Voce nao tem duplicatas suficientes' };
+    }
+    var trade = {
+      id: 'tr_' + Date.now(),
+      proposer: user.email || user.id,
+      status: 'pending',
+      offering: { stamp: offerStamp, qty: offerQty },
+      requesting: { stamp: wantStamp, qty: wantQty },
+      created: new Date().toISOString()
+    };
+    localTrades.push(trade);
+    lsSet('trades', localTrades);
+    return { success: true, trade: trade };
+  }
+
+  // Accept trade
+  function acceptTrade(tradeId) {
+    var user = STAMPBIT_AUTH.getUser();
+    if (!user) return { error: 'Faca login primeiro' };
+    for (var i = 0; i < localTrades.length; i++) {
+      if (localTrades[i].id === tradeId && localTrades[i].status === 'pending') {
+        var t = localTrades[i];
+        // Check if responder has the requested stamp
+        if (!localCollection[t.requesting.stamp] || localCollection[t.requesting.stamp].qty < t.requesting.qty) {
+          return { error: 'Voce nao tem o selo solicitado' };
+        }
+        // Execute swap
+        localCollection[t.offering.stamp].qty -= t.offering.qty;
+        localCollection[t.offering.stamp].dup = Math.max(0, localCollection[t.offering.stamp].qty - 1);
+        if (!localCollection[t.requesting.stamp]) localCollection[t.requesting.stamp] = { qty: 0, dup: 0 };
+        localCollection[t.requesting.stamp].qty += t.offering.qty;
+        localCollection[t.requesting.stamp].dup = Math.max(0, localCollection[t.requesting.stamp].qty - 1);
+        t.status = 'accepted';
+        lsSet('collection', localCollection);
+        lsSet('trades', localTrades);
+        return { success: true };
+      }
+    }
+    return { error: 'Troca nao encontrada' };
+  }
+
+  function rejectTrade(tradeId) {
+    for (var i = 0; i < localTrades.length; i++) {
+      if (localTrades[i].id === tradeId) {
+        localTrades[i].status = 'rejected';
+        lsSet('trades', localTrades);
+        return { success: true };
+      }
+    }
+    return { error: 'Troca nao encontrada' };
+  }
+
+  function getTrades() { return localTrades.filter(function(t){return t.status==='pending'||t.status==='accepted'}); }
+
+  return { openPack, addToCollection, getAlbumStats, getCollectionView, createTrade, acceptTrade, rejectTrade, getTrades };
+})();
+
+// ===== UI RENDER =====
+var currentAlbum = null;
+
+function showView(viewId) {
+  document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active')});
+  document.getElementById('view' + viewId.charAt(0).toUpperCase() + viewId.slice(1)).classList.add('active');
+  var tab = document.querySelector('.nav-tab[data-view="' + viewId + '"]');
+  if (tab) tab.classList.add('active');
+  if (viewId === 'album') renderAlbums();
+  if (viewId === 'colecao') renderColecao();
+  if (viewId === 'loja') renderStore();
+  if (viewId === 'trocas') renderTrades();
 }
 
-loadStamps();
+document.querySelectorAll('.nav-tab').forEach(function(tab){
+  tab.addEventListener('click', function(){ showView(this.dataset.view); });
+});
+
+// ===== AUTH UI =====
+var authMode = 'login';
+function openAuth() { document.getElementById('authModal').classList.add('active'); }
+function closeAuth() { document.getElementById('authModal').classList.remove('active'); }
+
+document.getElementById('navUser').addEventListener('click', function(){
+  if (STAMPBIT_AUTH.isLoggedIn()) {
+    STAMPBIT_AUTH.signOut();
+    updateUserUI();
+    renderAll();
+  } else {
+    openAuth();
+  }
+});
+document.getElementById('authClose').addEventListener('click', closeAuth);
+document.getElementById('authToggle').addEventListener('click', function(){
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('authTitle').textContent = authMode === 'login' ? 'ACESSO' : 'CRIAR CONTA';
+  document.getElementById('authBtn').textContent = authMode === 'login' ? 'ENTRAR' : 'CRIAR';
+  document.getElementById('authToggle').textContent = authMode === 'login' ? 'Criar conta' : 'Ja tenho conta';
+  document.getElementById('authError').textContent = '';
+});
+
+document.getElementById('authBtn').addEventListener('click', async function(){
+  var email = document.getElementById('authEmail').value.trim();
+  var pass = document.getElementById('authPassword').value.trim();
+  if (!email || !pass) { document.getElementById('authError').textContent = 'Preencha email e senha'; return; }
+  document.getElementById('authError').textContent = '';
+  var result = authMode === 'login' ? await STAMPBIT_AUTH.signIn(email, pass) : await STAMPBIT_AUTH.signUp(email, pass);
+  if (result.error) {
+    document.getElementById('authError').textContent = result.error;
+  } else {
+    closeAuth();
+    document.getElementById('authEmail').value = '';
+    document.getElementById('authPassword').value = '';
+    updateUserUI();
+    renderAll();
+  }
+});
+
+function updateUserUI() {
+  var user = STAMPBIT_AUTH.getUser();
+  document.getElementById('navUser').textContent = user ? (user.email || user.id).slice(0,12)+'...' : 'LOGIN';
+  document.getElementById('navCredits').textContent = '\u2605 ' + localCredits;
+  renderAll();
+}
+
+// ===== RENDER: ALBUMS =====
+function renderAlbums() {
+  if (currentAlbum) { renderSlots(currentAlbum); return; }
+  var el = document.getElementById('albumList');
+  el.style.display = '';
+  document.getElementById('albumSlots').style.display = 'none';
+
+  var albumDefs = [
+    { name:'Genesis Collection', emoji:'\u{1F537}', theme:'Origins', slots:12, desc:'Os 12 selos fundadores do STAMPBIT' },
+    { name:'Cyber Beasts', emoji:'\u{1F409}', theme:'Beasts', slots:8, desc:'Criaturas digitais da matrix' },
+    { name:'Neon Cities', emoji:'\u{1F306}', theme:'Cities', slots:8, desc:'Paisagens urbanas neon' },
+    { name:'Ancient Tech', emoji:'\u{1F3DB}\uFE0F', theme:'Ancient', slots:8, desc:'Tecnologia ancestral' },
+    { name:'Space Frontiers', emoji:'\u{1F680}', theme:'Space', slots:8, desc:'Conquista do espaco digital' }
+  ];
+
+  var html = '<div class="album-grid">';
+  for (var i = 0; i < albumDefs.length; i++) {
+    var a = albumDefs[i];
+    var albumStamps = STAMP_ALL.slice(0, a.slots);
+    var stats = STAMP_ECO.getAlbumStats(albumStamps);
+    html += '<div class="album-card" data-idx="' + i + '">' +
+      '<div class="album-card-emoji">' + a.emoji + '</div>' +
+      '<div class="album-card-name">' + a.name + '</div>' +
+      '<div class="album-card-progress">' + stats.owned + '/' + stats.total + ' (' + stats.pct + '%)</div>' +
+      '<div class="album-card-bar"><div class="album-card-fill" style="width:' + stats.pct + '%"></div></div>' +
+      '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+
+  el.querySelectorAll('.album-card').forEach(function(card){
+    card.addEventListener('click', function(){
+      currentAlbum = parseInt(this.dataset.idx);
+      renderSlots(currentAlbum);
+    });
+  });
+}
+
+function renderSlots(idx) {
+  var albumDefs = [
+    { name:'Genesis Collection', emoji:'\u{1F537}', slots:12 },
+    { name:'Cyber Beasts', emoji:'\u{1F409}', slots:8 },
+    { name:'Neon Cities', emoji:'\u{1F306}', slots:8 },
+    { name:'Ancient Tech', emoji:'\u{1F3DB}\uFE0F', slots:8 },
+    { name:'Space Frontiers', emoji:'\u{1F680}', slots:8 }
+  ];
+  var album = albumDefs[idx];
+  document.getElementById('albumList').style.display = 'none';
+  document.getElementById('albumSlots').style.display = 'block';
+
+  var albumStamps = STAMP_ALL.slice(0, album.slots);
+  var stats = STAMP_ECO.getAlbumStats(albumStamps);
+  document.getElementById('slotsProgress').textContent = stats.owned + '/' + stats.total + ' (' + stats.pct + '%)';
+
+  var html = '';
+  for (var i = 0; i < album.slots; i++) {
+    var s = albumStamps[i];
+    var owned = localCollection[s.name] && localCollection[s.name].qty > 0;
+    html += '<div class="slot ' + (owned ? 'filled' : '') + '">' +
+      (owned ? s.emoji : '?') +
+      '<span class="slot-number">' + (i+1) + '</span></div>';
+  }
+  document.getElementById('slotsGrid').innerHTML = html;
+}
+
+document.getElementById('slotsBack').addEventListener('click', function(){
+  currentAlbum = null;
+  renderAlbums();
+});
+
+// ===== RENDER: COLECAO =====
+function renderColecao() {
+  var list = STAMP_ECO.getCollectionView();
+  var el = document.getElementById('colecaoGrid');
+  if (list.length === 0 || list.every(function(s){return s.qty === 0})) {
+    el.innerHTML = '<div class="colecao-empty">Nenhum selo ainda. Va ate a Loja e compre envelopes!</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < list.length; i++) {
+    var s = list[i];
+    if (s.qty === 0) continue;
+    html += '<div class="colecao-item">' +
+      '<div class="colecao-item-emoji">' + s.emoji + '</div>' +
+      '<div class="colecao-item-name">' + s.name + '</div>' +
+      '<div class="colecao-item-qty">' + s.qty + 'x</div>' +
+      (s.dup > 0 ? '<div class="colecao-item-dup">' + s.dup + ' duplicata(s)</div>' : '') +
+      '</div>';
+  }
+  el.innerHTML = html;
+}
+
+// ===== RENDER: STORE =====
+function renderStore() {
+  var packs = [
+    { name:'Pack Basico', desc:'5 selos. Maior chance de Comuns.', emoji:'\u{1F4E8}', price:0, qty:5,
+      weights:{'Comum':60,'Raro':25,'Epico':12,'Lendario':3} },
+    { name:'Pack Premium', desc:'5 selos. Chance de Raros e Epicos!', emoji:'\u{1F4E6}', price:50, qty:5,
+      weights:{'Comum':30,'Raro':35,'Epico':25,'Lendario':10} },
+    { name:'Pack Lendario', desc:'3 selos. Alta chance de Lendarios!', emoji:'\u{1F48E}', price:200, qty:3,
+      weights:{'Comum':10,'Raro':20,'Epico':30,'Lendario':40} },
+    { name:'Pack Mega', desc:'10 selos! O maximo de poder!', emoji:'\u{1F381}', price:150, qty:10,
+      weights:{'Comum':40,'Raro':30,'Epico':20,'Lendario':10} }
+  ];
+
+  var html = '';
+  for (var i = 0; i < packs.length; i++) {
+    var p = packs[i];
+    html += '<div class="store-card">' +
+      '<div class="store-emoji">' + p.emoji + '</div>' +
+      '<div class="store-name">' + p.name + '</div>' +
+      '<div class="store-desc">' + p.desc + '</div>' +
+      '<div class="store-price ' + (p.price === 0 ? 'free' : '') + '">' +
+        (p.price === 0 ? 'GRATIS' : '\u2605 ' + p.price) + '</div>' +
+      '<button class="store-btn" data-idx="' + i + '">ABRIR</button>' +
+      '</div>';
+  }
+  document.getElementById('storeGrid').innerHTML = html;
+
+  document.querySelectorAll('.store-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var idx = parseInt(this.dataset.idx);
+      openPackByIdx(idx);
+    });
+  });
+}
+
+function openPackByIdx(idx) {
+  var packs = [
+    { name:'Pack Basico', price:0, qty:5, weights:{'Comum':60,'Raro':25,'Epico':12,'Lendario':3} },
+    { name:'Pack Premium', price:50, qty:5, weights:{'Comum':30,'Raro':35,'Epico':25,'Lendario':10} },
+    { name:'Pack Lendario', price:200, qty:3, weights:{'Comum':10,'Raro':20,'Epico':30,'Lendario':40} },
+    { name:'Pack Mega', price:150, qty:10, weights:{'Comum':40,'Raro':30,'Epico':20,'Lendario':10} }
+  ];
+  var pack = packs[idx];
+
+  if (!STAMPBIT_AUTH.isLoggedIn()) { openAuth(); return; }
+  if (localCredits < pack.price) { alert('Creditos insuficientes!'); return; }
+
+  if (pack.price > 0) {
+    localCredits -= pack.price;
+    lsSet('credits', localCredits);
+    updateUserUI();
+  }
+
+  var results = STAMP_ECO.openPack(pack);
+  STAMP_ECO.addToCollection(results);
+  showPackResults(pack.name, results);
+}
+
+function showPackResults(packName, results) {
+  var overlay = document.getElementById('packOverlay');
+  document.getElementById('packTitle').textContent = packName + ' - RESULTADOS';
+  var html = '';
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    html += '<div class="pack-result-item" style="animation-delay:' + (i*0.15) + 's">' +
+      '<div class="pack-result-emoji">' + r.emoji + '</div>' +
+      '<div class="pack-result-name">' + r.name + '</div>' +
+      '<div class="pack-result-rarity ' + r.rarity + '">' + r.rarity + '</div>' +
+      '</div>';
+  }
+  document.getElementById('packResults').innerHTML = html;
+  overlay.classList.add('active');
+  renderAll();
+}
+
+document.getElementById('packClose').addEventListener('click', function(){
+  document.getElementById('packOverlay').classList.remove('active');
+});
+
+// ===== RENDER: TRADES =====
+function renderTrades() {
+  var el = document.getElementById('tradesList');
+  var trades = STAMP_ECO.getTrades();
+  if (trades.length === 0) {
+    el.innerHTML = '<div class="trades-empty">Nenhuma troca ativa. Crie uma para comecar!</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < trades.length; i++) {
+    var t = trades[i];
+    var isMine = STAMPBIT_AUTH.getUser() && t.proposer === (STAMPBIT_AUTH.getUser().email || STAMPBIT_AUTH.getUser().id);
+    html += '<div class="trade-card">' +
+      '<div class="trade-card-header">' +
+        '<span class="trade-card-user">' + t.proposer.slice(0,10) + '...</span>' +
+        '<span class="trade-card-status ' + t.status + '">' + t.status.toUpperCase() + '</span>' +
+      '</div>' +
+      '<div class="trade-card-body">' +
+        '<div class="trade-col"><div class="trade-col-title">Oferece</div>' +
+          '<div class="trade-item">' + t.offering.qty + 'x ' + t.offering.stamp + '</div></div>' +
+        '<div class="trade-col"><div class="trade-col-title">Recebe</div>' +
+          '<div class="trade-item">' + t.requesting.qty + 'x ' + t.requesting.stamp + '</div></div>' +
+      '</div>';
+    if (!isMine && t.status === 'pending') {
+      html += '<div class="trade-card-actions">' +
+        '<button class="trade-btn accept" data-trade="' + t.id + '" data-action="accept">ACEITAR</button>' +
+        '<button class="trade-btn reject" data-trade="' + t.id + '" data-action="reject">RECUSAR</button>' +
+        '</div>';
+    }
+    html += '</div>';
+  }
+  el.innerHTML = html;
+
+  el.querySelectorAll('.trade-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var id = this.dataset.trade;
+      var action = this.dataset.action;
+      var result = action === 'accept' ? STAMP_ECO.acceptTrade(id) : STAMP_ECO.rejectTrade(id);
+      if (result.error) { alert(result.error); }
+      renderAll();
+    });
+  });
+}
+
+// ===== NEW TRADE MODAL =====
+document.getElementById('newTradeBtn').addEventListener('click', function(){
+  if (!STAMPBIT_AUTH.isLoggedIn()) { openAuth(); return; }
+  var list = STAMP_ECO.getCollectionView().filter(function(s){return s.dup > 0});
+  if (list.length === 0) { alert('Voce nao tem duplicatas para trocar. Compre envelopes primeiro!'); return; }
+
+  var offerOpts = list.map(function(s){return s.name + ' (' + s.dup + 'x)'}).join('\n');
+  var offerName = prompt('Qual selo voce quer oferecer?\n' + offerOpts);
+  if (!offerName) return;
+  var offerStamp = list.find(function(s){return offerName.startsWith(s.name)});
+  if (!offerStamp) { alert('Selo nao encontrado'); return; }
+  var offerQty = parseInt(prompt('Quantas duplicatas (' + offerStamp.dup + ' disponiveis):')) || 1;
+
+  var wantOpts = STAMP_ALL.filter(function(s){return !localCollection[s.name] || localCollection[s.name].qty === 0}).map(function(s){return s.name}).join('\n');
+  if (!wantOpts) { alert('Voce ja tem todos os selos!'); return; }
+  var wantName = prompt('Qual selo voce quer receber?\n' + wantOpts);
+  if (!wantName) return;
+  var wantStamp = STAMP_ALL.find(function(s){return s.name === wantName.trim()});
+  if (!wantStamp) { alert('Selo nao encontrado'); return; }
+
+  var result = STAMP_ECO.createTrade(offerStamp.name, offerQty, wantStamp.name, 1);
+  if (result.error) { alert(result.error); }
+  renderAll();
+});
+
+// ===== RENDER ALL =====
+function renderAll() {
+  updateUserUI();
+  renderAlbums();
+  renderColecao();
+  renderStore();
+  renderTrades();
+}
 
 // ===== PARTICLES =====
-const canvas = document.getElementById('particles-canvas');
-const ctx = canvas.getContext('2d');
-let particles = [];
-let animId;
+var canvas = document.getElementById('particles-canvas');
+var ctx = canvas.getContext('2d');
+var particles = [], animId;
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-class Particle {
-  constructor() { this.reset(); }
-  reset() {
+function randP(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function Particle() {
+  this.reset = function() {
     this.x = Math.random() * canvas.width;
     this.y = Math.random() * canvas.height;
     this.vx = (Math.random() - 0.5) * 1.2;
     this.vy = (Math.random() - 0.5) * 1.2 - 0.5;
     this.size = Math.random() * 2.5 + 0.5;
     this.life = 0;
-    this.maxLife = rand(60, 180);
+    this.maxLife = randP(60, 180);
     this.hue = Math.random() > 0.5 ? 190 + Math.random() * 20 : 270 + Math.random() * 30;
-  }
-  update() {
-    this.x += this.vx;
-    this.y += this.vy;
-    this.vy -= 0.02;
-    this.life++;
+  };
+  this.update = function() {
+    this.x += this.vx; this.y += this.vy; this.vy -= 0.02; this.life++;
     if (this.life > this.maxLife || this.x < -10 || this.x > canvas.width + 10 || this.y < -10 || this.y > canvas.height + 10) {
-      this.reset();
-      this.life = 0;
+      this.reset(); this.life = 0;
     }
-  }
-  draw() {
-    const alpha = 1 - (this.life / this.maxLife);
+  };
+  this.draw = function() {
+    var alpha = 1 - (this.life / this.maxLife);
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${this.hue}, 80%, 60%, ${alpha * 0.7})`;
+    ctx.fillStyle = 'hsla(' + this.hue + ',80%,60%,' + (alpha * 0.7) + ')';
     ctx.fill();
     if (this.size > 1.5) {
       ctx.shadowBlur = 8;
-      ctx.shadowColor = `hsla(${this.hue}, 80%, 60%, ${alpha * 0.4})`;
+      ctx.shadowColor = 'hsla(' + this.hue + ',80%,60%,' + (alpha * 0.4) + ')';
       ctx.fill();
       ctx.shadowBlur = 0;
     }
-  }
+  };
+  this.reset();
 }
 
-function initParticles(count) {
-  particles = [];
-  for (let i = 0; i < count; i++) particles.push(new Particle());
-}
-initParticles(80);
+function initParticles(count) { particles = []; for (var i = 0; i < count; i++) particles.push(new Particle()); }
+initParticles(60);
 
 function animateParticles() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  particles.forEach(p => { p.update(); p.draw(); });
+  for (var i = 0; i < particles.length; i++) { particles[i].update(); particles[i].draw(); }
   animId = requestAnimationFrame(animateParticles);
 }
 animateParticles();
 
-// ===== FORGE BUTTON =====
-document.getElementById('forgeBtn').addEventListener('click', function() {
-  for (let i = 0; i < 40; i++) {
-    const p = new Particle();
-    const rect = this.getBoundingClientRect();
-    p.x = rect.left + rect.width / 2;
-    p.y = rect.top + rect.height / 2;
-    p.vx = (Math.random() - 0.5) * 8;
-    p.vy = (Math.random() - 0.5) * 8 - 2;
-    p.maxLife = rand(30, 90);
-    p.hue = Math.random() > 0.5 ? 190 : 270;
-    particles.push(p);
+// ===== BOOT SEQUENCE =====
+var bootLines = [
+  { text:'> STAMPBIT_OS_V3 // INITIALIZING ECOSYSTEM...', cls:'' },
+  { text:'> CARREGANDO MODULOS...', cls:'' },
+  { text:'  [OK] DATABASE LAYER', cls:'ok' },
+  { text:'  [OK] AUTHENTICATION', cls:'ok' },
+  { text:'  [OK] ALBUM ENGINE', cls:'ok' },
+  { text:'  [OK] BOOSTER PACK SYSTEM', cls:'ok' },
+  { text:'  [OK] TRADE MATRIX', cls:'ok' },
+  { text:'> CARREGANDO CATALOGO DE STAMPS...', cls:'' },
+  { text:'  [OK] 12 UNIQUE STAMPS // 5 ALBUMS', cls:'ok' },
+  { text:'', cls:'' },
+  { text:'> STAMPBIT_SYSTEM_READY // ECOSYSTEM ACTIVE', cls:'highlight' },
+];
+
+async function runBoot() {
+  var terminal = document.getElementById('bootTerminal');
+  var overlay = document.getElementById('bootOverlay');
+  for (var i = 0; i < bootLines.length; i++) {
+    var line = bootLines[i];
+    var div = document.createElement('div');
+    div.className = 'boot-line';
+    if (line.cls) div.classList.add(line.cls);
+    div.textContent = line.text;
+    div.style.animationDelay = (i * 0.1) + 's';
+    terminal.appendChild(div);
   }
-  if (particles.length > 300) particles.splice(0, particles.length - 300);
-});
+  var cursor = document.createElement('span');
+  cursor.className = 'boot-cursor';
+  cursor.style.animationDelay = ((bootLines.length + 1) * 0.1) + 's';
+  terminal.appendChild(cursor);
+  var delay = (bootLines.length + 2) * 0.1 + 0.6;
+  setTimeout(function(){
+    overlay.classList.add('hidden');
+    setTimeout(function(){ overlay.remove(); }, 800);
+  }, delay * 1000);
+
+  // Init DB in background
+  STAMPBIT_DB.init().then(function(r){
+    if (r.ready) {
+      document.getElementById('terminalText').textContent = '> STAMPBIT_OS_V3 // SUPABASE: ONLINE // ECOSYSTEM: ACTIVE';
+    }
+  });
+}
+
+runBoot();
+
+// Init UI
+if (STAMPBIT_AUTH.isLoggedIn()) updateUserUI();
+renderAll();
 </script>
 </body>
 </html>
