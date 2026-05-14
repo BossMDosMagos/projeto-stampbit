@@ -1,0 +1,420 @@
+/* ============================================================
+   STAMPBIT - Industrial CNC Aesthetic
+   Fonte: Space Grotesk + JetBrains Mono
+   Cores: #080808 / #121212 / #4cc9f0 / #9d4edd
+   ============================================================ */
+
+:root {
+  --bg-deep: #080808;
+  --bg-radial: #121212;
+  --cyan: #4cc9f0;
+  --gold: #9d4edd;
+  --gold-glow: rgba(157, 78, 221, 0.6);
+  --cyan-glow: rgba(76, 201, 240, 0.3);
+  --glass-bg: rgba(18, 18, 18, 0.65);
+  --glass-border: #333;
+  --card-radius: 16px;
+  --chamfer-size: 12px;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-display);
+  background: var(--bg-deep);
+  color: #e0e0e0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== BOOTING SEQUENCE ===== */
+.boot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: var(--bg-deep);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.8s ease;
+}
+.boot-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.boot-terminal {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--cyan);
+  max-width: 560px;
+  width: 90%;
+  line-height: 1.8;
+}
+.boot-line {
+  opacity: 0;
+  animation: bootFadeIn 0.4s forwards;
+}
+.boot-line.highlight { color: var(--gold); }
+.boot-line.ok { color: #4cc9f0; }
+.boot-line.warn { color: #f72585; }
+.boot-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: var(--cyan);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+@keyframes bootFadeIn {
+  to { opacity: 1; }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ===== BACKGROUND ===== */
+.bg-void {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: var(--bg-deep);
+}
+.bg-void::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, var(--bg-radial) 0%, var(--bg-deep) 80%);
+  z-index: -1;
+}
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(76, 201, 240, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(76, 201, 240, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ===== HEADER ===== */
+header {
+  padding: 32px 48px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.logo {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+}
+.logo-stamp { color: #888; }
+.logo-bit {
+  color: var(--gold);
+  text-shadow: 0 0 12px var(--gold-glow), 0 0 40px rgba(157, 78, 221, 0.3);
+}
+.header-status {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #555;
+  letter-spacing: 1px;
+}
+
+/* ===== TERMINAL BAR ===== */
+.terminal-bar {
+  padding: 8px 48px 24px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--cyan);
+  opacity: 0.6;
+  letter-spacing: 0.5px;
+  animation: pulse-terminal 3s ease-in-out infinite;
+}
+@keyframes pulse-terminal {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.terminal-bar .cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: var(--cyan);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* ===== GRID ===== */
+.grid-container {
+  padding: 0 48px 100px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 28px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ===== CARD (CNC Alumínio) ===== */
+.card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  padding: 24px;
+  cursor: pointer;
+  transition: border-color 0.4s, box-shadow 0.4s, transform 0.3s;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Chamfered border (CNC 45deg) */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--card-radius) + 2px);
+  z-index: -1;
+  background: transparent;
+  clip-path: polygon(
+    0 var(--chamfer-size),
+    var(--chamfer-size) 0,
+    calc(100% - var(--chamfer-size)) 0,
+    100% var(--chamfer-size),
+    100% calc(100% - var(--chamfer-size)),
+    calc(100% - var(--chamfer-size)) 100%,
+    var(--chamfer-size) 100%,
+    0 calc(100% - var(--chamfer-size))
+  );
+  transition: background 0.4s;
+}
+.card:hover::before {
+  background: linear-gradient(135deg, var(--cyan), transparent 60%, var(--gold));
+}
+
+/* Inner glass rim */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: calc(var(--card-radius) - 2px);
+  border: 1px solid rgba(255,255,255,0.04);
+  pointer-events: none;
+  clip-path: polygon(
+    0 calc(var(--chamfer-size) + 2px),
+    calc(var(--chamfer-size) + 2px) 0,
+    calc(100% - var(--chamfer-size) - 2px) 0,
+    100% calc(var(--chamfer-size) + 2px),
+    100% calc(100% - var(--chamfer-size) - 2px),
+    calc(100% - var(--chamfer-size) - 2px) 100%,
+    calc(var(--chamfer-size) + 2px) 100%,
+    0 calc(100% - var(--chamfer-size) - 2px)
+  );
+}
+
+/* PCB overlay */
+.card .pcb-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+.card:hover .pcb-overlay { opacity: 1; }
+.card .pcb-overlay svg { width: 100%; height: 100%; }
+
+/* Holographic edge sweep */
+.card .edge-glow {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(76, 201, 240, 0.15), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s;
+  pointer-events: none;
+  z-index: 1;
+}
+.card:hover .edge-glow { left: 120%; }
+
+/* Card content */
+.card-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ccc;
+  letter-spacing: 1px;
+  transition: color 0.3s, text-shadow 0.3s;
+}
+.card:hover .card-title {
+  color: var(--cyan);
+  text-shadow: 0 0 12px var(--cyan-glow);
+}
+.card-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #666;
+  padding: 2px 8px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  transition: border-color 0.3s, color 0.3s;
+}
+.card:hover .card-badge {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.card-thumb {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px 0;
+  font-size: 3rem;
+  filter: grayscale(0.6);
+  transition: filter 0.3s, transform 0.3s;
+}
+.card:hover .card-thumb {
+  filter: grayscale(0);
+  transform: scale(1.05);
+}
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: #555;
+}
+.card-serial { transition: color 0.3s; }
+.card:hover .card-serial { color: var(--cyan); }
+.card-hash {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+  color: #444;
+  transition: color 0.3s;
+}
+.card:hover .card-hash { color: #888; }
+.card-rarity {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: var(--gold);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.card:hover .card-rarity { opacity: 1; }
+
+/* ===== FORGE BUTTON ===== */
+.forge-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 100;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  background: rgba(8, 8, 8, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--cyan);
+  padding: 14px 28px;
+  cursor: pointer;
+  clip-path: polygon(
+    0 8px, 8px 0,
+    calc(100% - 8px) 0, 100% 8px,
+    100% calc(100% - 8px), calc(100% - 8px) 100%,
+    8px 100%, 0 calc(100% - 8px)
+  );
+  transition: box-shadow 0.3s, background 0.3s;
+  text-transform: uppercase;
+}
+.forge-btn:hover {
+  box-shadow: 0 0 24px var(--cyan-glow), inset 0 0 24px rgba(76, 201, 240, 0.1);
+  background: rgba(8, 8, 8, 0.95);
+}
+.forge-btn:active { transform: scale(0.97); }
+
+/* ===== FOOTER ===== */
+footer {
+  text-align: center;
+  padding: 24px 48px;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: #333;
+  letter-spacing: 1.5px;
+}
+
+/* ===== PARTICLES CANVAS ===== */
+#particles-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ===== RESPONSIVO ===== */
+@media (max-width: 768px) {
+  header {
+    padding: 20px 20px 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .logo { font-size: 1.4rem; letter-spacing: 4px; }
+  .terminal-bar {
+    padding: 8px 20px 20px;
+    font-size: 0.6rem;
+  }
+  .grid-container {
+    padding: 0 16px 100px;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .card { min-height: 180px; }
+  .forge-btn {
+    bottom: 16px;
+    right: 16px;
+    font-size: 0.6rem;
+    padding: 10px 18px;
+  }
+  footer { padding: 16px 20px; font-size: 0.5rem; }
+  .boot-terminal { font-size: 0.65rem; }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+  .grid-container { grid-template-columns: repeat(2, 1fr); }
+}

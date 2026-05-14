@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STAMPBIT - Portal de Ativos Digitais</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- BOOTING SEQUENCE -->
+<div class="boot-overlay" id="bootOverlay">
+  <div class="boot-terminal" id="bootTerminal"></div>
+</div>
+
+<!-- PARTICLES -->
+<canvas id="particles-canvas"></canvas>
+
+<!-- BACKGROUND -->
+<div class="bg-void"></div>
+<div class="grid-overlay"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <span class="logo-stamp">stamp</span><span class="logo-bit">bit</span>
+  </div>
+  <div class="header-status">SECURE // v2.4.1</div>
+</header>
+
+<!-- TERMINAL STATUS -->
+<div class="terminal-bar">
+  <span id="terminalText">> STAMPBIT_OS_V2 // DATABASE: SUPABASE_ONLINE // ENCRYPT: ACTIVE</span><span class="cursor"></span>
+</div>
+
+<!-- GRID -->
+<main class="grid-container" id="stampGrid"></main>
+
+<!-- FORGE BUTTON -->
+<button class="forge-btn" id="forgeBtn">[ FORJAR_STAMPBIT ]</button>
+
+<!-- FOOTER -->
+<footer>DESIGNED COMMAND SOLUÇÕES TECNOLOGIA // PROTOCOLO ALLBIONICS // 2026</footer>
+
+<script>
+// ===== ENV =====
+window.STAMPBIT_ENV = {
+  SUPABASE_URL: 'https://llqfnfukryhumpmodqtp.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxscWZuZnVrcnlodW1wbW9kcXRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NzkwMTksImV4cCI6MjA5NDM1NTAxOX0.K7sqJ4iPsVVy5SD4q7UcRoP-YJKaJEzU5_Y3Y9A_uKI'
+};
+
+// ===== DATABASE MODULE =====
+const STAMPBIT_DB = (() => {
+  let client = null;
+  let ready = false;
+
+  function getConfig() {
+    const url = window.STAMPBIT_ENV?.SUPABASE_URL;
+    const key = window.STAMPBIT_ENV?.SUPABASE_ANON_KEY;
+    if (!url || !key) {
+      console.error('[STAMPBIT] Variaveis de ambiente nao encontradas');
+      return null;
+    }
+    return { url, key };
+  }
+
+  async function init() {
+    const config = getConfig();
+    if (!config) return { ready: false };
+    try {
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      client = createClient(config.url, config.key, {
+        auth: { persistSession: true, autoRefreshToken: true },
+        global: { headers: { 'x-application-name': 'STAMPBIT' } }
+      });
+      ready = true;
+      console.log('%c> STAMPBIT_SYSTEM_READY // SUPABASE_CLIENT: ONLINE', 'color: #4cc9f0; font-family: monospace; font-size: 12px;');
+      return { ready: true, client };
+    } catch (err) {
+      console.warn('[STAMPBIT] Supabase client indisponivel (modo offline):', err.message);
+      return { ready: false, error: err.message };
+    }
+  }
+
+  function getClient() { return client; }
+  function isReady() { return ready; }
+
+  return { init, getClient, isReady };
+})();
+
+// ===== AUTH MODULE =====
+const STAMPBIT_AUTH = (() => {
+  let currentUser = null;
+
+  async function signIn(email, password) {
+    const db = STAMPBIT_DB.getClient();
+    if (!db) return { error: 'Database not initialized' };
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (!error) currentUser = data.user;
+    return { user: data?.user, error };
+  }
+
+  async function signUp(email, password) {
+    const db = STAMPBIT_DB.getClient();
+    if (!db) return { error: 'Database not initialized' };
+    const { data, error } = await db.auth.signUp({ email, password, options: { data: { app: 'STAMPBIT' } } });
+    return { user: data?.user, error };
+  }
+
+  async function signOut() {
+    const db = STAMPBIT_DB.getClient();
+    if (!db) return;
+    await db.auth.signOut();
+    currentUser = null;
+  }
+
+  async function getSession() {
+    const db = STAMPBIT_DB.getClient();
+    if (!db) return null;
+    const { data } = await db.auth.getSession();
+    currentUser = data?.session?.user ?? null;
+    return currentUser;
+  }
+
+  function getUser() { return currentUser; }
+
+  function onAuthChange(callback) {
+    const db = STAMPBIT_DB.getClient();
+    if (!db) return;
+    db.auth.onAuthStateChange((event, session) => {
+      currentUser = session?.user ?? null;
+      callback(event, currentUser);
+    });
+  }
+
+  return { signIn, signUp, signOut, getSession, getUser, onAuthChange };
+})();
+
+// ===== ENGINE MODULE =====
+const STAMPBIT_ENGINE = (() => {
+  function generateSerial(prefix, number, total) {
+    const padded = String(number).padStart(3, '0');
+    return `${prefix}-${padded}/${total}`;
+  }
+
+  async function forgeStamp(stampId) {
+    const db = STAMPBIT_DB.getClient();
+    const user = STAMPBIT_AUTH.getUser();
+    if (!db) return { error: 'Database offline' };
+    if (!user) return { error: 'Usuario nao autenticado' };
+    try {
+      const { data: stamp, error: stampErr } = await db.from('stamps').select('*').eq('id', stampId).single();
+      if (stampErr) throw stampErr;
+      const { count, error: countErr } = await db.from('inventory').select('*', { count: 'exact', head: true }).eq('stamp_id', stampId);
+      if (countErr) throw countErr;
+      const nextSerial = (count || 0) + 1;
+      if (nextSerial > stamp.total_supply) return { error: 'Supply esgotado deste selo' };
+      const { data: forged, error: forgeErr } = await db.from('inventory').insert({ user_id: user.id, stamp_id: stampId, serial_number: nextSerial }).select().single();
+      if (forgeErr) throw forgeErr;
+      console.log('%c> STAMPBIT_FORGED // ' + stamp.name + ' // ' + generateSerial(stamp.serial_prefix, nextSerial, stamp.total_supply), 'color: #9d4edd; font-family: monospace;');
+      return { success: true, stamp: forged, serial: generateSerial(stamp.serial_prefix, nextSerial, stamp.total_supply), hash: forged.hash_validation };
+    } catch (err) {
+      console.error('[STAMPBIT] Erro na forja:', err.message);
+      return { error: err.message };
+    }
+  }
+
+  async function getUserStamps() {
+    const db = STAMPBIT_DB.getClient();
+    const user = STAMPBIT_AUTH.getUser();
+    if (!db || !user) return [];
+    const { data, error } = await db.from('inventory').select('*, stamps(*)').eq('user_id', user.id).order('forged_at', { ascending: false });
+    if (error) { console.error('[STAMPBIT] Erro ao buscar inventario:', error.message); return []; }
+    return data || [];
+  }
+
+  function validateHash(hash) { return /^[a-f0-9]{64}$/.test(hash); }
+
+  return { forgeStamp, getUserStamps, generateSerial, validateHash };
+})();
+
+// ===== BOOTING SEQUENCE =====
+const bootLines = [
+  { text: '> STAMPBIT_OS_V2 // INITIALIZING SYSTEM...', cls: '' },
+  { text: '> CHECKING INTEGRITY MODULES...', cls: '' },
+  { text: '  [OK] KERNEL // 0x7C00', cls: 'ok' },
+  { text: '  [OK] MEMORY // 64TB ALLOCATED', cls: 'ok' },
+  { text: '  [OK] ENCRYPT // AES-256-GCM', cls: 'ok' },
+  { text: '> CONNECTING TO SUPABASE...', cls: '' },
+  { text: '  [OK] DATABASE // SUPABASE_ONLINE', cls: 'ok' },
+  { text: '  [OK] AUTH // SECURE_CHANNEL', cls: 'ok' },
+  { text: '> LOADING STAMP CATALOG...', cls: '' },
+  { text: '  [OK] 12 UNITS // READY', cls: 'ok' },
+  { text: '', cls: '' },
+  { text: '> STAMPBIT_SYSTEM_READY // ALL SYSTEMS NOMINAL', cls: 'highlight' },
+];
+
+async function runBootSequence() {
+  const terminal = document.getElementById('bootTerminal');
+  const overlay = document.getElementById('bootOverlay');
+
+  for (let i = 0; i < bootLines.length; i++) {
+    const line = bootLines[i];
+    const div = document.createElement('div');
+    div.className = 'boot-line';
+    if (line.cls) div.classList.add(line.cls);
+    div.textContent = line.text;
+    div.style.animationDelay = `${i * 0.12}s`;
+    terminal.appendChild(div);
+  }
+
+  const cursor = document.createElement('span');
+  cursor.className = 'boot-cursor';
+  cursor.style.animationDelay = `${(bootLines.length + 1) * 0.12}s`;
+  terminal.appendChild(cursor);
+
+  const totalDelay = (bootLines.length + 2) * 0.12 + 0.8;
+
+  setTimeout(() => {
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.remove(), 800);
+  }, totalDelay * 1000);
+
+  // Init DB in background (nao bloqueia a UI)
+  STAMPBIT_DB.init().then(function(res) {
+    var t = document.getElementById('terminalText');
+    if (res.ready) {
+      t.textContent = '> STAMPBIT_OS_V2 // DATABASE: SUPABASE_ONLINE // ENCRYPT: ACTIVE';
+    } else {
+      t.textContent = '> STAMPBIT_OS_V2 // DATABASE: PENDING_SETUP // ENCRYPT: ACTIVE';
+    }
+  });
+}
+
+runBootSequence();
+
+// ===== STAMP DATA =====
+const STAMP_EMOJIS = {
+  'Genesis Block': '🔷', 'Neon Circuit': '⚡', 'Quantum Core': '🧊',
+  'Void Walker': '🌑', 'Cyber Forge': '🔥', 'Digital Ghost': '👻',
+  'Holo Matrix': '💎', 'Steel Phantom': '⚙️', 'Plasma Gate': '🔮',
+  'Carbon Eye': '👁️', 'Gold Protocol': '🏆', 'Shadow Node': '🕶️'
+};
+const STAMP_FALLBACK = [
+  { name:'Genesis Block',emoji:'🔷',rarity:'Lendario',total:100 },
+  { name:'Neon Circuit',emoji:'⚡',rarity:'Epico',total:250 },
+  { name:'Quantum Core',emoji:'🧊',rarity:'Raro',total:500 },
+  { name:'Void Walker',emoji:'🌑',rarity:'Lendario',total:100 },
+  { name:'Cyber Forge',emoji:'🔥',rarity:'Epico',total:250 },
+  { name:'Digital Ghost',emoji:'👻',rarity:'Comum',total:1000 },
+  { name:'Holo Matrix',emoji:'💎',rarity:'Raro',total:500 },
+  { name:'Steel Phantom',emoji:'⚙️',rarity:'Epico',total:250 },
+  { name:'Plasma Gate',emoji:'🔮',rarity:'Raro',total:500 },
+  { name:'Carbon Eye',emoji:'👁️',rarity:'Comum',total:1000 },
+  { name:'Gold Protocol',emoji:'🏆',rarity:'Lendario',total:100 },
+  { name:'Shadow Node',emoji:'🕶️',rarity:'Comum',total:1000 }
+];
+
+function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+function serializeNumber(n,t){return '#'+String(n).padStart(3,'0')+'/'+t}
+function generateHash(){var c='0123456789ABCDEFabcdef',h='0x',i;for(i=0;i<16;i++)h+=c[rand(0,c.length-1)];return h}
+function generatePCB(){var p=[],i,c,x1,y1,x2,y2,cx,cy;for(i=0,c=rand(4,8);i<c;i++){x1=rand(10,90);y1=rand(10,90);x2=rand(10,90);y2=rand(10,90);cx=(x1+x2)/2+rand(-20,20);cy=(y1+y2)/2+rand(-20,20);p.push('<path d="M'+x1+' '+y1+' Q'+cx+' '+cy+','+x2+' '+y2+'" stroke="#4cc9f0" stroke-width="'+rand(1,2)+'" fill="none" opacity="0.3"/>')}for(i=0,c=rand(3,6);i<c;i++){p.push('<circle cx="'+rand(15,85)+'" cy="'+rand(15,85)+'" r="'+rand(2,4)+'" fill="#4cc9f0" opacity="0.25"/>')}return p.join('\n')}
+
+function renderCards(data) {
+  var grid = document.getElementById('stampGrid');
+  grid.innerHTML = '';
+  data.forEach(function(stamp, idx) {
+    var serial = serializeNumber(idx + 1, stamp.total);
+    var hash = generateHash();
+    var pcb = generatePCB();
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML =
+      '<div class="pcb-overlay"><svg viewBox="0 0 100 100" preserveAspectRatio="none">' + pcb + '</svg></div>' +
+      '<div class="edge-glow"></div>' +
+      '<div class="card-content">' +
+        '<div class="card-header"><div class="card-title">' + stamp.name + '</div><div class="card-badge">' + stamp.rarity + '</div></div>' +
+        '<div class="card-thumb">' + stamp.emoji + '</div>' +
+        '<div class="card-footer"><span class="card-serial">' + serial + '</span><span class="card-hash">' + hash + '</span></div>' +
+      '</div>' +
+      '<div class="card-rarity">' + stamp.rarity.toUpperCase() + '</div>';
+    grid.appendChild(card);
+  });
+}
+
+async function loadStamps() {
+  var db = STAMPBIT_DB.getClient();
+  if (db) {
+    try {
+      var { data, error } = await db.from('stamps').select('*');
+      if (!error && data && data.length) {
+        var mapped = data.map(function(s) {
+          return { name: s.name, emoji: STAMP_EMOJIS[s.name] || '🔶', rarity: s.rarity, total: s.total_supply, id: s.id };
+        });
+        renderCards(mapped);
+        document.getElementById('terminalText').textContent = '> STAMPBIT_OS_V2 // DATABASE: SUPABASE_ONLINE // ' + mapped.length + ' STAMPS_LOADED';
+        return;
+      }
+    } catch(e) {}
+  }
+  renderCards(STAMP_FALLBACK);
+}
+
+loadStamps();
+
+// ===== PARTICLES =====
+const canvas = document.getElementById('particles-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let animId;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.vx = (Math.random() - 0.5) * 1.2;
+    this.vy = (Math.random() - 0.5) * 1.2 - 0.5;
+    this.size = Math.random() * 2.5 + 0.5;
+    this.life = 0;
+    this.maxLife = rand(60, 180);
+    this.hue = Math.random() > 0.5 ? 190 + Math.random() * 20 : 270 + Math.random() * 30;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy -= 0.02;
+    this.life++;
+    if (this.life > this.maxLife || this.x < -10 || this.x > canvas.width + 10 || this.y < -10 || this.y > canvas.height + 10) {
+      this.reset();
+      this.life = 0;
+    }
+  }
+  draw() {
+    const alpha = 1 - (this.life / this.maxLife);
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, 80%, 60%, ${alpha * 0.7})`;
+    ctx.fill();
+    if (this.size > 1.5) {
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = `hsla(${this.hue}, 80%, 60%, ${alpha * 0.4})`;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+
+function initParticles(count) {
+  particles = [];
+  for (let i = 0; i < count; i++) particles.push(new Particle());
+}
+initParticles(80);
+
+function animateParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  animId = requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// ===== FORGE BUTTON =====
+document.getElementById('forgeBtn').addEventListener('click', function() {
+  for (let i = 0; i < 40; i++) {
+    const p = new Particle();
+    const rect = this.getBoundingClientRect();
+    p.x = rect.left + rect.width / 2;
+    p.y = rect.top + rect.height / 2;
+    p.vx = (Math.random() - 0.5) * 8;
+    p.vy = (Math.random() - 0.5) * 8 - 2;
+    p.maxLife = rand(30, 90);
+    p.hue = Math.random() > 0.5 ? 190 : 270;
+    particles.push(p);
+  }
+  if (particles.length > 300) particles.splice(0, particles.length - 300);
+});
+</script>
+</body>
+</html>
