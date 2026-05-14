@@ -207,8 +207,10 @@
 <div class="view-subtitle">Automacao e gestao estrategica do ecossistema STAMPBIT</div>
 <div id="adminLogin" style="max-width:400px;margin:40px auto;text-align:center">
   <div style="font-size:2rem;margin-bottom:12px">&#x1F512;</div>
+  <form onsubmit="adminLogin();return false" style="display:contents">
   <input class="modal-input" id="adminPassInput" type="password" placeholder="Chave de acesso">
-  <button class="modal-btn" onclick="adminLogin()">ACESSAR PAINEL</button>
+  <button class="modal-btn" type="button" onclick="adminLogin()">ACESSAR PAINEL</button>
+  </form>
 </div>
 <div id="adminPanel" style="display:none">
   <!-- Stats -->
@@ -284,7 +286,7 @@
 // ============================================================
 // STAMPBIT v4.0 - FULL ECOSYSTEM
 // ============================================================
-console.log('[STAMPBIT] v4.0 loading...');
+console.log('[STAMPBIT] v5.0 loading...');
 
 // ===== CONSTANTS =====
 var STAMPS = [
