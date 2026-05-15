@@ -261,7 +261,8 @@
 </section>
 
 <footer>DESIGNED COMMAND SOLUCOES TECNOLOGIA // PROTOCOLO ALLBIONICS // 2026
-<span style="font-size:0.4rem;color:#222;display:block;margin-top:4px">[Ctrl+Shift+A]</span></footer>
+<span style="font-size:0.4rem;color:#222;display:block;margin-top:4px">[Ctrl+Shift+A]</span>
+<span style="font-size:0.4rem;color:#222;cursor:pointer;display:block;margin-top:2px" onclick="resetLocalData()">[reset]</span></footer>
 
 <style>
 .view-subtitle.stats{font-size:0.7rem;margin-bottom:16px}
@@ -497,6 +498,22 @@ var SB = (function(){
 })();
 
 function notif(msg){var e=document.getElementById('notif');e.textContent=msg;e.style.display='block';e.style.opacity='1';setTimeout(function(){e.style.opacity='0';setTimeout(function(){e.style.display='none'},500)},3000)}
+
+// Forca migracao da colecao: adiciona SELOS faltando e ja salva
+function forceMigrateCollection(){
+  STAMPS.forEach(function(s){
+    if(!COL[s.name]) COL[s.name]={qty:0,dup:0};
+  });
+  SB.set('collection', COL);
+}
+forceMigrateCollection();
+
+function resetLocalData(){
+  if(confirm('Zerar todos os dados locais? Isso nao afeta o Supabase.')){
+    try{localStorage.clear()}catch(e){}
+    window.location.reload();
+  }
+}
 
 // ===== STATE (via SB cache) =====
 var U = SB.get('user');
