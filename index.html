@@ -302,7 +302,16 @@ var STAMPS = [
   {id:'s09',name:'Plasma Gate',emoji:'\u{1F52E}',rarity:'Raro',desc:'Portal de plasma para o desconhecido'},
   {id:'s10',name:'Carbon Eye',emoji:'\u{1F441}\uFE0F',rarity:'Comum',desc:'O olho que tudo ve na rede'},
   {id:'s11',name:'Gold Protocol',emoji:'\u{1F3C6}',rarity:'Lendario',desc:'O protocolo mais valioso ja criado'},
-  {id:'s12',name:'Shadow Node',emoji:'\u{1F576}\uFE0F',rarity:'Comum',desc:'No oculto na sombra da rede'}
+  {id:'s12',name:'Shadow Node',emoji:'\u{1F576}\uFE0F',rarity:'Comum',desc:'No oculto na sombra da rede'},
+  // Copa do Mundo 2018
+  {id:'s13',name:'Alisson Becker',img:'public/ALISSON BECKER.png',rarity:'Epico',desc:'Goleiro da selecao brasileira 2018'},
+  {id:'s14',name:'Casemiro',img:'public/CASEMIRO.png',rarity:'Lendario',desc:'Volante da selecao brasileira 2018'},
+  {id:'s15',name:'Danilo',img:'public/DANILO.png',rarity:'Raro',desc:'Lateral da selecao brasileira 2018'},
+  {id:'s16',name:'Fernandinho',img:'public/FERNANDINHO.png',rarity:'Epico',desc:'Meio-campo da selecao brasileira 2018'},
+  {id:'s17',name:'Marquinhos',img:'public/MARQUINHOS.png',rarity:'Lendario',desc:'Zagueiro da selecao brasileira 2018'},
+  {id:'s18',name:'Paulinho',img:'public/PAULINHO.png',rarity:'Raro',desc:'Meio-campo da selecao brasileira 2018'},
+  {id:'s19',name:'Renato Augusto',img:'public/RENATO AUGUSTO.png',rarity:'Epico',desc:'Meia da selecao brasileira 2018'},
+  {id:'s20',name:'Thiago Silva',img:'public/THIAGO SILVA.png',rarity:'Lendario',desc:'Capitao da selecao brasileira 2018'}
 ];
 var RARITIES = ['Comum','Raro','Epico','Lendario'];
 var RARITY_ORDER = {Comum:0,Raro:1,Epico:2,Lendario:3};
@@ -560,7 +569,7 @@ var ECO = {
     STAMPS.forEach(function(s){
       var c=COL[s.name]||{qty:0,dup:0};
       if(rarity&&rarity!=='all'&&s.rarity!==rarity)return;
-      list.push({name:s.name,emoji:s.emoji,rarity:s.rarity,desc:s.desc,qty:c.qty,dup:c.dup})
+      list.push({name:s.name,emoji:s.emoji,img:s.img,rarity:s.rarity,desc:s.desc,qty:c.qty,dup:c.dup})
     });
     list.sort(function(a,b){
       if(a.qty!==b.qty)return b.qty-a.qty;
@@ -795,7 +804,8 @@ var ALBUM_DEFS=[
   {name:'Cyber Beasts',emoji:'\u{1F409}',theme:'Criaturas digitais',reward:'Cyber Dragon',slots:8},
   {name:'Neon Cities',emoji:'\u{1F306}',theme:'Cidades neon',reward:'Neon Skyline',slots:8},
   {name:'Ancient Tech',emoji:'\u{1F3DB}\uFE0F',theme:'Tecnologia ancestral',reward:'Ark of Code',slots:8},
-  {name:'Space Frontiers',emoji:'\u{1F680}',theme:'Espaco digital',reward:'Void Emperor',slots:8}
+  {name:'Space Frontiers',emoji:'\u{1F680}',theme:'Espaco digital',reward:'Void Emperor',slots:8},
+  {name:'Copa do Mundo 2018',emoji:'\u26BD',theme:'Futebol',reward:'Trofeu Copa',slots:8}
 ];
 
 function renderAlbum(){
@@ -829,8 +839,9 @@ function renderSlots(idx){
   var html='';
   slots.forEach(function(s,i){
     var o=COL[s.name]&&COL[s.name].qty>0;
+    var content=o?(s.img?'<img src="'+s.img+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="'+s.name+'">':s.emoji):'?';
     html+='<div class="slot '+(o?'filled':'')+'" style="'+(o?'border-color:'+RARITY_COLORS[s.rarity]:'')+'">'+
-      (o?s.emoji:'?')+'<span class="slot-number">'+(i+1)+'</span></div>'
+      content+'<span class="slot-number">'+(i+1)+'</span></div>'
   });
   document.getElementById('slotsGrid').innerHTML=html;
 
@@ -858,10 +869,10 @@ function renderColecao(){
   var html='';
   list.forEach(function(s){
     if(s.qty===0)html+='<div class="colecao-item" style="opacity:0.3;border-color:#222">'+
-      '<div class="colecao-item-emoji">?</div><div class="colecao-item-name">'+s.name+'</div>'+
+      '<div class="colecao-item-emoji">'+(s.img?'<img src="'+s.img+'" style="width:40px;height:40px;object-fit:cover;border-radius:50%" alt="">':'?')+'</div><div class="colecao-item-name">'+s.name+'</div>'+
       '<div class="colecao-item-qty" style="color:#444">Nao possui</div></div>';
     else html+='<div class="colecao-item" style="border-color:'+RARITY_COLORS[s.rarity]+'40">'+
-      '<div class="colecao-item-emoji">'+s.emoji+'</div>'+
+      '<div class="colecao-item-emoji">'+(s.img?'<img src="'+s.img+'" style="width:40px;height:40px;object-fit:cover;border-radius:50%" alt="">':s.emoji)+'</div>'+
       '<div class="colecao-item-name">'+s.name+'</div>'+
       '<div class="colecao-item-qty" style="color:'+RARITY_COLORS[s.rarity]+'">'+s.qty+'x '+s.rarity+'</div>'+
       (s.dup>0?'<div class="colecao-item-dup">'+s.dup+' duplicata(s)</div>':'')+
@@ -1424,7 +1435,8 @@ function exportAlbumAsWallpaper(albumIdx){
     {name:'Cyber Beasts',emoji:'\u{1F409}',slots:8},
     {name:'Neon Cities',emoji:'\u{1F306}',slots:8},
     {name:'Ancient Tech',emoji:'\u{1F3DB}\uFE0F',slots:8},
-    {name:'Space Frontiers',emoji:'\u{1F680}',slots:8}
+    {name:'Space Frontiers',emoji:'\u{1F680}',slots:8},
+    {name:'Copa do Mundo 2018',emoji:'\u26BD',slots:8}
   ];
   var a=defs[albumIdx]||defs[0];
   var slots=STAMPS.slice(0,a.slots);
