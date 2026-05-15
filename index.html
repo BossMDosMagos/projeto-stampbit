@@ -523,11 +523,16 @@ function cls(n){return n.charAt(0).toUpperCase()+n.slice(1)}
 // ===== HELPERS PARA PERSISTIR =====
 // Garante que todo stamp do catalogo existe na colecao
 function ensureCollectionIntegrity(){
+  var added=0;
   STAMPS.forEach(function(s){
-    if(!COL[s.name]) COL[s.name]={qty:0,dup:0};
+    if(!COL[s.name]){COL[s.name]={qty:0,dup:0};added++}
   });
+  if(added>0){SB.set('collection',COL);console.log('[STAMPBIT] Collection integrity: '+added+' stamps added')}
 }
 ensureCollectionIntegrity();
+
+// Forca recarregar colecao do cache apos garantir integridade
+COL = SB.get('collection');
 
 function saveAll(){
   SB.set('credits',C);
