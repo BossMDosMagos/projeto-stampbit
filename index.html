@@ -354,11 +354,6 @@ function loadCatalog(){
 }
 loadCatalog();
 
-// Helper: pega os stamps de um album pelo objeto album
-function getAlbumSlots(a){
-  return STAMPS.filter(function(s){return s.albumIdx === (a.albumIdx !== undefined ? a.albumIdx : a)});
-}
-
 // Helper: pega os stamps de um album pelo index
 function getAlbumStamps(albumIdx){
   return STAMPS.filter(function(s){return s.albumIdx === albumIdx});
@@ -683,7 +678,7 @@ var ECO = {
   checkSecretAlbum:function(){
     var completed=0;
     for(var i=0;i<ALBUM_DEFS.length;i++){
-      var slots=getAlbumSlots(ALBUM_DEFS[i]);
+      var a=ALBUM_DEFS[i];var slots=STAMPS.filter(function(x){return x.albumIdx===a.albumIdx});
       var p=this.albumProgress(slots);
       if(p.owned===p.total)completed++
     }
@@ -696,7 +691,7 @@ var ECO = {
     {id:'first',name:'Primeiro Selo',desc:'Colecione seu primeiro selo',icon:'\u{1F537}',check:function(){var t=0;for(var n in COL)t+=COL[n].qty;return t>=1}},
     {id:'collector',name:'Colecionador',desc:'Colecione 10 selos',icon:'\u{1F4E6}',check:function(){var t=0;for(var n in COL)t+=COL[n].qty;return t>=10}},
     {id:'hunter',name:'Caçador de Raridades',desc:'Colecione 3 selos Lendarios',icon:'\u{1F48E}',check:function(){var t=0;for(var n in COL){var s=findStamp(n);if(s&&s.rarity==='Lendario')t+=COL[n].qty}return t>=3}},
-    {id:'album_master',name:'Mestre do Album',desc:'Complete 1 album inteiro',icon:'\u{1F3C6}',check:function(){for(var i=0;i<ALBUM_DEFS.length;i++){var s=getAlbumSlots(ALBUM_DEFS[i]);var p=ECO.albumProgress(s);if(p.owned===p.total)return true}return false}},
+    {id:'album_master',name:'Mestre do Album',desc:'Complete 1 album inteiro',icon:'\u{1F3C6}',check:function(){for(var i=0;i<ALBUM_DEFS.length;i++){var a=ALBUM_DEFS[i];var s=STAMPS.filter(function(x){return x.albumIdx===a.albumIdx});var p=ECO.albumProgress(s);if(p.owned===p.total)return true}return false}},
     {id:'pack_rat',name:'Viciado em Envelopes',desc:'Abra 10 envelopes',icon:'\u{1F4E8}',check:function(){return PASS.totalOpened>=10}},
     {id:'trader',name:'Negociador',desc:'Complete uma troca',icon:'\u{1F504}',check:function(){return TRADES.some(function(t){return t.status==='accepted'})}},
     {id:'millionaire',name:'Milionario',desc:'Acumule 1000 creditos',icon:'\u{1F4B0}',check:function(){return C>=1000}},
@@ -900,7 +895,7 @@ function renderAlbum(){
   document.getElementById('albumSlots').style.display='none';
   var html='<div class="album-grid">';
   ALBUM_DEFS.forEach(function(a,i){
-    var slots=getAlbumSlots(a),p=ECO.albumProgress(slots);
+    var slots=STAMPS.filter(function(x){return x.albumIdx===a.albumIdx}),p=ECO.albumProgress(slots);
     var completed=p.owned===p.total;
     html+='<div class="album-card" data-idx="'+i+'">'+
       '<div class="album-card-emoji">'+(completed?'\u{1F3C6}':a.emoji)+'</div>'+
@@ -920,7 +915,7 @@ function renderSlots(idx){
   var a=ALBUM_DEFS[idx];
   document.getElementById('albumList').style.display='none';
   document.getElementById('albumSlots').style.display='block';
-  var slots=getAlbumSlots(a),p=ECO.albumProgress(slots);
+  var slots=STAMPS.filter(function(x){return x.albumIdx===a.albumIdx}),p=ECO.albumProgress(slots);
   document.getElementById('slotsInfo').textContent=a.name+' | '+p.owned+'/'+p.total+' ('+p.pct+'%)'+(p.owned===p.total?' COMPLETO!':'');
   var html='';
   slots.forEach(function(s,i){
