@@ -1554,16 +1554,26 @@ function renderAdmin(){
 function loadHealth(){
   var el=document.getElementById('adminHealth');
   el.innerHTML='<div style="grid-column:1/-1;font-size:0.65rem;color:#666;font-family:var(--font-mono);margin-bottom:8px">Carregando...</div>';
-  // Simulated health data from local state (in production, calls get_economy_health RPC)
-  var totalC=0;for(var n in COL)totalC+=COL[n].qty;
-  var html=
-    '<div class="dash-widget gold"><div style="font-size:1.5rem">\u{1F465}</div><div class="dash-widget-val" style="font-size:1.2rem">'+(U?'1':'0')+'</div><div class="dash-widget-label">Usuarios</div></div>'+
-    '<div class="dash-widget cyan"><div style="font-size:1.5rem">\u2605</div><div class="dash-widget-val" style="font-size:1.2rem">'+C+'</div><div class="dash-widget-label">Creditos Locais</div></div>'+
-    '<div class="dash-widget pink"><div style="font-size:1.5rem">\u{1F4E6}</div><div class="dash-widget-val" style="font-size:1.2rem">'+totalC+'</div><div class="dash-widget-label">Selos em Circ.</div></div>'+
-    '<div class="dash-widget" style="border-color:#f72585"><div style="font-size:1.5rem">\u{1F4CA}</div><div class="dash-widget-val" style="font-size:1.2rem;color:#f72585">'+STAMPS.length+'</div><div class="dash-widget-label">Tipos de Selo</div></div>'+
-    '<div class="dash-widget gold"><div style="font-size:1.5rem">\u{1F504}</div><div class="dash-widget-val" style="font-size:1.2rem">'+TRADES.length+'</div><div class="dash-widget-label">Trocas</div></div>'+
-    '<div class="dash-widget cyan"><div style="font-size:1.5rem">\u{1F3C6}</div><div class="dash-widget-val" style="font-size:1.2rem">'+ACH.length+'/'+ECO.ACH_DEFS.length+'</div><div class="dash-widget-label">Conquistas</div></div>';
-  el.innerHTML=html;
+  callRPC('get_economy_health',{}).then(function(d){
+    if(!d||d.total_users===undefined)throw new Error('invalid');
+    el.innerHTML=
+      '<div class="dash-widget gold"><div style="font-size:1.5rem">\u{1F465}</div><div class="dash-widget-val" style="font-size:1.2rem">'+d.total_users+'</div><div class="dash-widget-label">Usuarios</div></div>'+
+      '<div class="dash-widget cyan"><div style="font-size:1.5rem">\u2605</div><div class="dash-widget-val" style="font-size:1.2rem">'+d.total_credits+'</div><div class="dash-widget-label">Total Creditos</div></div>'+
+      '<div class="dash-widget pink"><div style="font-size:1.5rem">\u{1F4E6}</div><div class="dash-widget-val" style="font-size:1.2rem">'+d.total_stamps_in_circulation+'</div><div class="dash-widget-label">Selos em Circ.</div></div>'+
+      '<div class="dash-widget" style="border-color:#f72585"><div style="font-size:1.5rem">\u{1F4CA}</div><div class="dash-widget-val" style="font-size:1.2rem;color:#f72585">'+d.total_stamp_types+'</div><div class="dash-widget-label">Tipos</div></div>'+
+      '<div class="dash-widget gold"><div style="font-size:1.5rem">\u{1F504}</div><div class="dash-widget-val" style="font-size:1.2rem">'+d.total_trades+'</div><div class="dash-widget-label">Trocas</div></div>'+
+      '<div class="dash-widget cyan"><div style="font-size:1.5rem">\u{1F3C6}</div><div class="dash-widget-val" style="font-size:1.2rem">'+d.total_achievements_unlocked+'</div><div class="dash-widget-label">Conquistas</div></div>';
+  }).catch(function(){
+    // fallback local
+    var totalC=0;for(var n in COL)totalC+=COL[n].qty;
+    el.innerHTML=
+      '<div class="dash-widget gold"><div style="font-size:1.5rem">\u{1F465}</div><div class="dash-widget-val" style="font-size:1.2rem">'+(U?'1':'0')+'</div><div class="dash-widget-label">Usuarios</div></div>'+
+      '<div class="dash-widget cyan"><div style="font-size:1.5rem">\u2605</div><div class="dash-widget-val" style="font-size:1.2rem">'+C+'</div><div class="dash-widget-label">Creditos Locais</div></div>'+
+      '<div class="dash-widget pink"><div style="font-size:1.5rem">\u{1F4E6}</div><div class="dash-widget-val" style="font-size:1.2rem">'+totalC+'</div><div class="dash-widget-label">Selos em Circ.</div></div>'+
+      '<div class="dash-widget" style="border-color:#f72585"><div style="font-size:1.5rem">\u{1F4CA}</div><div class="dash-widget-val" style="font-size:1.2rem;color:#f72585">'+STAMPS.length+'</div><div class="dash-widget-label">Tipos</div></div>'+
+      '<div class="dash-widget gold"><div style="font-size:1.5rem">\u{1F504}</div><div class="dash-widget-val" style="font-size:1.2rem">'+TRADES.length+'</div><div class="dash-widget-label">Trocas</div></div>'+
+      '<div class="dash-widget cyan"><div style="font-size:1.5rem">\u{1F3C6}</div><div class="dash-widget-val" style="font-size:1.2rem">'+ACH.length+'/'+ECO.ACH_DEFS.length+'</div><div class="dash-widget-label">Conquistas</div></div>';
+  });
 }
 
 function renderOddsSliders(){
@@ -1585,10 +1595,13 @@ function applyOdds(){
     var v=parseInt(document.getElementById('wSlider_'+i).value)||1;
     weights[r]=v;
   });
-  // Save to local store for shop simulation
   SB.set('admin_odds',weights);
-  notif('Probabilidades atualizadas: '+
-    Object.keys(weights).map(function(k){return k+'='+weights[k]+'%'}).join(' | '));
+  callRPC('update_global_odds',{p_weights:weights}).then(function(r){
+    notif('Probabilidades aplicadas no Supabase: '+
+      Object.keys(weights).map(function(k){return k+'='+weights[k]+'%'}).join(' | '));
+  }).catch(function(){
+    notif('Probabilidades salvas localmente (offline)');
+  });
 }
 
 function sendBroadcast(){
@@ -1612,30 +1625,59 @@ function bulkImport(){
   try{
     var data=JSON.parse(json);
     if(!Array.isArray(data)){notif('Deve ser um array');return}
-    var count=0;
-    data.forEach(function(s){
-      if(!s.name)return;
-      var exists=STAMPS.some(function(x){return x.name===s.name});
-      if(!exists){
-        STAMPS.push({id:'s'+Date.now(),name:s.name,emoji:s.emoji||'\u{1F4E6}',rarity:s.rarity||'Comum',desc:s.description||''});
-        COL[s.name]={qty:0,dup:0};
-        count++;
-      }
+    var el=document.getElementById('jsonResult');
+    // Try Supabase first
+    callRPC('bulk_import_stamps',{p_stamps:data}).then(function(r){
+      el.textContent=typeof r==='string'?r:JSON.stringify(r);
+      notif(r);
+    }).catch(function(){
+      // Fallback local
+      var count=0;
+      data.forEach(function(s){
+        if(!s.name)return;
+        var exists=STAMPS.some(function(x){return x.name===s.name});
+        if(!exists){
+          STAMPS.push({id:'s'+Date.now(),name:s.name,emoji:s.emoji||'\u{1F4E6}',rarity:s.rarity||'Comum',desc:s.description||''});
+          COL[s.name]={qty:0,dup:0};
+          count++;
+        }
+      });
+      if(count>0)SB.set('collection',COL);
+      el.textContent=count+' selos importados localmente!';
+      notif(count+' selos importados');
     });
-    if(count>0)SB.set('collection',COL);
-    document.getElementById('jsonResult').textContent=count+' selos importados!';
-    notif(count+' selos importados com sucesso');
     renderColecao();renderLoja();
   }catch(e){document.getElementById('jsonResult').textContent='Erro: '+e.message;notif('JSON invalido')}
 }
 
+function callRPC(rpc, body){
+  var env=window.STAMPBIT_ENV;
+  if(!env) return Promise.reject('No env');
+  return fetch(env.SUPABASE_URL+'/rest/v1/rpc/'+rpc, {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'apikey':env.SUPABASE_ANON_KEY,
+      'Authorization':'Bearer '+env.SUPABASE_ANON_KEY
+    },
+    body:JSON.stringify(body)
+  }).then(function(r){return r.json()});
+}
+
 function distributeReward(){
   var amt=parseInt(document.getElementById('rewardAmount').value)||50;
-  C+=amt;
-  SB.set('credits',C);
-  document.getElementById('rewardResult').textContent=amt+' creditos distribuidos! (modo local)';
-  notif(amt+' creditos adicionados a sua conta');
-  updateNav();
+  var el=document.getElementById('rewardResult');
+  callRPC('distribute_reward',{p_credits:amt}).then(function(r){
+    el.textContent=typeof r==='string'?r:JSON.stringify(r);
+    notif('Recompensa distribuida via Supabase!');
+  }).catch(function(e){
+    // fallback local
+    C+=amt;
+    SB.set('credits',C);
+    el.textContent=amt+' creditos adicionados (modo local - Supabase offline)';
+    notif(amt+' creditos adicionados localmente');
+    updateNav();
+  });
 }
 
 function lookupUser(){
