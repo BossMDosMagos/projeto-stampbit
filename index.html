@@ -800,12 +800,12 @@ function renderDashboard(){
 // ----- ALBUM -----
 var curAlbum=null;
 var ALBUM_DEFS=[
-  {name:'Genesis Collection',emoji:'\u{1F537}',theme:'As origens',reward:'Genesis Master',slots:12},
-  {name:'Cyber Beasts',emoji:'\u{1F409}',theme:'Criaturas digitais',reward:'Cyber Dragon',slots:8},
-  {name:'Neon Cities',emoji:'\u{1F306}',theme:'Cidades neon',reward:'Neon Skyline',slots:8},
-  {name:'Ancient Tech',emoji:'\u{1F3DB}\uFE0F',theme:'Tecnologia ancestral',reward:'Ark of Code',slots:8},
-  {name:'Space Frontiers',emoji:'\u{1F680}',theme:'Espaco digital',reward:'Void Emperor',slots:8},
-  {name:'Copa do Mundo 2018',emoji:'\u26BD',theme:'Futebol',reward:'Trofeu Copa',slots:8}
+  {name:'Genesis Collection',emoji:'\u{1F537}',theme:'As origens',reward:'Genesis Master',slots:12,offset:0},
+  {name:'Cyber Beasts',emoji:'\u{1F409}',theme:'Criaturas digitais',reward:'Cyber Dragon',slots:8,offset:0},
+  {name:'Neon Cities',emoji:'\u{1F306}',theme:'Cidades neon',reward:'Neon Skyline',slots:8,offset:0},
+  {name:'Ancient Tech',emoji:'\u{1F3DB}\uFE0F',theme:'Tecnologia ancestral',reward:'Ark of Code',slots:8,offset:0},
+  {name:'Space Frontiers',emoji:'\u{1F680}',theme:'Espaco digital',reward:'Void Emperor',slots:8,offset:0},
+  {name:'Copa do Mundo 2018',emoji:'\u26BD',theme:'Futebol',reward:'Trofeu Copa',slots:8,offset:12}
 ];
 
 function renderAlbum(){
@@ -814,7 +814,7 @@ function renderAlbum(){
   document.getElementById('albumSlots').style.display='none';
   var html='<div class="album-grid">';
   ALBUM_DEFS.forEach(function(a,i){
-    var slots=STAMPS.slice(0,a.slots),p=ECO.albumProgress(slots);
+    var off=a.offset||0;var slots=STAMPS.slice(off,off+a.slots),p=ECO.albumProgress(slots);
     var completed=p.owned===p.total;
     html+='<div class="album-card" data-idx="'+i+'">'+
       '<div class="album-card-emoji">'+(completed?'\u{1F3C6}':a.emoji)+'</div>'+
@@ -834,7 +834,7 @@ function renderSlots(idx){
   var a=ALBUM_DEFS[idx];
   document.getElementById('albumList').style.display='none';
   document.getElementById('albumSlots').style.display='block';
-  var slots=STAMPS.slice(0,a.slots),p=ECO.albumProgress(slots);
+  var off=a.offset||0;var slots=STAMPS.slice(off,off+a.slots),p=ECO.albumProgress(slots);
   document.getElementById('slotsInfo').textContent=a.name+' | '+p.owned+'/'+p.total+' ('+p.pct+'%)'+(p.owned===p.total?' COMPLETO!':'');
   var html='';
   slots.forEach(function(s,i){
@@ -1431,15 +1431,15 @@ function claimEventStamp(){
 // ----- 6. EXPORTAR ALBUM COMO WALLPAPER -----
 function exportAlbumAsWallpaper(albumIdx){
   var defs=[
-    {name:'Genesis Collection',emoji:'\u{1F537}',slots:12},
-    {name:'Cyber Beasts',emoji:'\u{1F409}',slots:8},
-    {name:'Neon Cities',emoji:'\u{1F306}',slots:8},
-    {name:'Ancient Tech',emoji:'\u{1F3DB}\uFE0F',slots:8},
-    {name:'Space Frontiers',emoji:'\u{1F680}',slots:8},
-    {name:'Copa do Mundo 2018',emoji:'\u26BD',slots:8}
+    {name:'Genesis Collection',emoji:'\u{1F537}',slots:12,offset:0},
+    {name:'Cyber Beasts',emoji:'\u{1F409}',slots:8,offset:0},
+    {name:'Neon Cities',emoji:'\u{1F306}',slots:8,offset:0},
+    {name:'Ancient Tech',emoji:'\u{1F3DB}\uFE0F',slots:8,offset:0},
+    {name:'Space Frontiers',emoji:'\u{1F680}',slots:8,offset:0},
+    {name:'Copa do Mundo 2018',emoji:'\u26BD',slots:8,offset:12}
   ];
   var a=defs[albumIdx]||defs[0];
-  var slots=STAMPS.slice(0,a.slots);
+  var off=a.offset||0;var slots=STAMPS.slice(off,off+a.slots);
 
   // Create offscreen canvas
   var cols=4,rows=Math.ceil(slots.length/cols);
