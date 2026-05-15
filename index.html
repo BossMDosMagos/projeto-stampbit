@@ -286,37 +286,89 @@
 
 <script>
 // ============================================================
-// STAMPBIT v4.0 - FULL ECOSYSTEM
+// STAMPBIT v6.0 - IMAGE-BASED CATALOG
 // ============================================================
-console.log('[STAMPBIT] v5.0 loading...');
+console.log('[STAMPBIT] v6.0 loading...');
 
 // ===== CONSTANTS =====
-var STAMPS = [
-  {id:'s01',name:'Genesis Block',emoji:'\u{1F537}',rarity:'Lendario',desc:'O primeiro selo do universo STAMPBIT'},
-  {id:'s02',name:'Neon Circuit',emoji:'\u26A1',rarity:'Epico',desc:'Energia pura em forma de circuito'},
-  {id:'s03',name:'Quantum Core',emoji:'\u{1F9CA}',rarity:'Raro',desc:'Nucleo de processamento quantico'},
-  {id:'s04',name:'Void Walker',emoji:'\u{1F311}',rarity:'Lendario',desc:'Aquele que caminha entre dimensoes'},
-  {id:'s05',name:'Cyber Forge',emoji:'\u{1F525}',rarity:'Epico',desc:'A forja que criou o mundo digital'},
-  {id:'s06',name:'Digital Ghost',emoji:'\u{1F47B}',rarity:'Comum',desc:'Assombracao nos cabos de fibra'},
-  {id:'s07',name:'Holo Matrix',emoji:'\u{1F48E}',rarity:'Raro',desc:'A matriz que sustenta a realidade virtual'},
-  {id:'s08',name:'Steel Phantom',emoji:'\u2699\uFE0F',rarity:'Epico',desc:'Fantasma de aco das maquinas antigas'},
-  {id:'s09',name:'Plasma Gate',emoji:'\u{1F52E}',rarity:'Raro',desc:'Portal de plasma para o desconhecido'},
-  {id:'s10',name:'Carbon Eye',emoji:'\u{1F441}\uFE0F',rarity:'Comum',desc:'O olho que tudo ve na rede'},
-  {id:'s11',name:'Gold Protocol',emoji:'\u{1F3C6}',rarity:'Lendario',desc:'O protocolo mais valioso ja criado'},
-  {id:'s12',name:'Shadow Node',emoji:'\u{1F576}\uFE0F',rarity:'Comum',desc:'No oculto na sombra da rede'},
-  // Copa do Mundo 2018
-  {id:'s13',name:'Alisson Becker',img:'public/ALISSON BECKER.png',rarity:'Epico',desc:'Goleiro da selecao brasileira 2018'},
-  {id:'s14',name:'Casemiro',img:'public/CASEMIRO.png',rarity:'Lendario',desc:'Volante da selecao brasileira 2018'},
-  {id:'s15',name:'Danilo',img:'public/DANILO.png',rarity:'Raro',desc:'Lateral da selecao brasileira 2018'},
-  {id:'s16',name:'Fernandinho',img:'public/FERNANDINHO.png',rarity:'Epico',desc:'Meio-campo da selecao brasileira 2018'},
-  {id:'s17',name:'Marquinhos',img:'public/MARQUINHOS.png',rarity:'Lendario',desc:'Zagueiro da selecao brasileira 2018'},
-  {id:'s18',name:'Paulinho',img:'public/PAULINHO.png',rarity:'Raro',desc:'Meio-campo da selecao brasileira 2018'},
-  {id:'s19',name:'Renato Augusto',img:'public/RENATO AUGUSTO.png',rarity:'Epico',desc:'Meia da selecao brasileira 2018'},
-  {id:'s20',name:'Thiago Silva',img:'public/THIAGO SILVA.png',rarity:'Lendario',desc:'Capitao da selecao brasileira 2018'}
-];
+var STAMPS = [];           // Flat list of all stamps (loaded from catalog)
+var ALBUM_DEFS = [];       // Album list (loaded from catalog)
 var RARITIES = ['Comum','Raro','Epico','Lendario'];
 var RARITY_ORDER = {Comum:0,Raro:1,Epico:2,Lendario:3};
 var RARITY_COLORS = {Comum:'#888',Raro:'#4cc9f0',Epico:'#9d4edd',Lendario:'#f72585'};
+var catalogLoaded = false;
+
+// Carrega o catalog.json e monta as estruturas
+function loadCatalog(){
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'catalog.json', false); // sincrono para simplificar
+  try {
+    xhr.send();
+    if (xhr.status === 200) {
+      var cat = JSON.parse(xhr.responseText);
+      cat.albums.forEach(function(album, ai){
+        ALBUM_DEFS.push({
+          name: album.name,
+          emoji: album.emoji || '\u{1F4E6}',
+          theme: album.theme || '',
+          reward: album.reward || '',
+          slots: album.stamps.length,
+          albumIdx: ai
+        });
+        album.stamps.forEach(function(stamp, si){
+          STAMPS.push({
+            id: 's' + (STAMPS.length + 1),
+            name: stamp.name,
+            image: stamp.image,
+            rarity: stamp.rarity || 'Comum',
+            desc: stamp.name,
+            albumIdx: ai,
+            slotIdx: si
+          });
+        });
+      });
+      catalogLoaded = true;
+      console.log('[STAMPBIT] Catalog loaded: ' + ALBUM_DEFS.length + ' albums, ' + STAMPS.length + ' stamps');
+    } else {
+      throw new Error('HTTP ' + xhr.status);
+    }
+  } catch(e) {
+    console.warn('[STAMPBIT] Catalog load failed, using fallback:', e.message);
+    // Fallback: album unico com os PNGs do SELOS/COPA 2018
+    var fallbackFiles = [
+      'ALISSON BECKER','CASEMIRO','DANILO','FERNANDINHO',
+      'MARQUINHOS','PAULINHO','RENATO AUGUSTO','THIAGO SILVA'
+    ];
+    var fallbackRarity = ['Lendario','Lendario','Epico','Epico','Raro','Raro','Comum','Comum'];
+    ALBUM_DEFS.push({name:'COPA 2018',emoji:'\u26BD',theme:'Selecao Brasileira',reward:'Trofeu Copa',slots:8,albumIdx:0});
+    fallbackFiles.forEach(function(f, i){
+      STAMPS.push({
+        id:'s'+(i+1), name:f,
+        image:'SELOS/COPA 2018/'+f+'.png',
+        rarity:fallbackRarity[i],
+        desc:f, albumIdx:0, slotIdx:i
+      });
+    });
+    catalogLoaded = true;
+  }
+}
+loadCatalog();
+
+// Helper: pega os stamps de um album
+function getAlbumStamps(albumIdx){
+  return STAMPS.filter(function(s){return s.albumIdx === albumIdx});
+}
+
+// Helper: renderiza imagem do stamp
+function stampImg(s,size){
+  var sz = size || '100%';
+  return s.image ? '<img src="'+s.image+'" style="width:'+sz+';height:'+sz+';object-fit:cover;border-radius:6px" alt="'+s.name+'">' : '<span style="font-size:2rem">?</span>';
+}
+// Helper: retorna tag img pequena ou fallback texto para usar em linhas
+function stampIcon(s,size){
+  var sz = size || '24px';
+  return s.image ? '<img src="'+s.image+'" style="width:'+sz+';height:'+sz+';object-fit:cover;border-radius:3px;vertical-align:middle" alt=""> ' + s.name : s.name;
+}
 
 // ===== SUPABASE BACKEND (persistencia com fallback localStorage) =====
 var SB = (function(){
@@ -531,7 +583,7 @@ var GUILD = SB.get('guild');
 var SECRET_UNLOCKED = SB.get('secret');
 var BATTLE_WINS = SB.get('bwins');
 
-var stampNames = {}; STAMPS.forEach(function(s){stampNames[s.name]=s});
+function findStamp(name){for(var i=0;i<STAMPS.length;i++){if(STAMPS[i].name===name)return STAMPS[i]}return null}
 
 function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 function pick(arr){return arr[rand(0,arr.length-1)]}
@@ -575,7 +627,8 @@ var ECO = {
       var r=rand(1,tw),cum=0,chosen='Comum';
       for(var k in weights){cum+=weights[k];if(r<=cum){chosen=k;break}}
       var pool=avail.filter(function(s){return s.rarity===chosen});
-      res.push(pool.length?pick(pool):pick(avail))
+      var chosenStamp=pool.length?pick(pool):pick(avail);
+      res.push({name:chosenStamp.name,image:chosenStamp.image,rarity:chosenStamp.rarity})
     }
     return res;
   },
@@ -599,7 +652,7 @@ var ECO = {
     STAMPS.forEach(function(s){
       var c=COL[s.name]||{qty:0,dup:0};
       if(rarity&&rarity!=='all'&&s.rarity!==rarity)return;
-      list.push({name:s.name,emoji:s.emoji,img:s.img,rarity:s.rarity,desc:s.desc,qty:c.qty,dup:c.dup})
+      list.push({name:s.name,image:s.image,rarity:s.rarity,desc:s.desc,qty:c.qty,dup:c.dup})
     });
     list.sort(function(a,b){
       if(a.qty!==b.qty)return b.qty-a.qty;
@@ -616,10 +669,9 @@ var ECO = {
 
   // Check secret album unlock
   checkSecretAlbum:function(){
-    var defs=[{slots:12},{slots:8},{slots:8},{slots:8},{slots:8}];
     var completed=0;
-    for(var i=0;i<defs.length;i++){
-      var slots=STAMPS.slice(0,defs[i].slots);
+    for(var i=0;i<ALBUM_DEFS.length;i++){
+      var slots=getAlbumSlots(ALBUM_DEFS[i]);
       var p=this.albumProgress(slots);
       if(p.owned===p.total)completed++
     }
@@ -631,8 +683,8 @@ var ECO = {
   ACH_DEFS:[
     {id:'first',name:'Primeiro Selo',desc:'Colecione seu primeiro selo',icon:'\u{1F537}',check:function(){var t=0;for(var n in COL)t+=COL[n].qty;return t>=1}},
     {id:'collector',name:'Colecionador',desc:'Colecione 10 selos',icon:'\u{1F4E6}',check:function(){var t=0;for(var n in COL)t+=COL[n].qty;return t>=10}},
-    {id:'hunter',name:'Caçador de Raridades',desc:'Colecione 3 selos Lendarios',icon:'\u{1F48E}',check:function(){var t=0;for(var n in COL)if(stampNames[n]&&stampNames[n].rarity==='Lendario')t+=COL[n].qty;return t>=3}},
-    {id:'album_master',name:'Mestre do Album',desc:'Complete 1 album inteiro',icon:'\u{1F3C6}',check:function(){var d=[{slots:12},{slots:8}];for(var i=0;i<d.length;i++){var s=STAMPS.slice(0,d[i].slots);var p=ECO.albumProgress(s);if(p.owned===p.total)return true}return false}},
+    {id:'hunter',name:'Caçador de Raridades',desc:'Colecione 3 selos Lendarios',icon:'\u{1F48E}',check:function(){var t=0;for(var n in COL){var s=findStamp(n);if(s&&s.rarity==='Lendario')t+=COL[n].qty}return t>=3}},
+    {id:'album_master',name:'Mestre do Album',desc:'Complete 1 album inteiro',icon:'\u{1F3C6}',check:function(){for(var i=0;i<ALBUM_DEFS.length;i++){var s=getAlbumSlots(ALBUM_DEFS[i]);var p=ECO.albumProgress(s);if(p.owned===p.total)return true}return false}},
     {id:'pack_rat',name:'Viciado em Envelopes',desc:'Abra 10 envelopes',icon:'\u{1F4E8}',check:function(){return PASS.totalOpened>=10}},
     {id:'trader',name:'Negociador',desc:'Complete uma troca',icon:'\u{1F504}',check:function(){return TRADES.some(function(t){return t.status==='accepted'})}},
     {id:'millionaire',name:'Milionario',desc:'Acumule 1000 creditos',icon:'\u{1F4B0}',check:function(){return C>=1000}},
@@ -829,21 +881,6 @@ function renderDashboard(){
 
 // ----- ALBUM -----
 var curAlbum=null;
-var ALBUM_DEFS=[
-  {name:'Genesis Collection',emoji:'\u{1F537}',theme:'As origens',reward:'Genesis Master',slots:12,offset:0},
-  {name:'Cyber Beasts',emoji:'\u{1F409}',theme:'Criaturas digitais',reward:'Cyber Dragon',slots:8,offset:0},
-  {name:'Neon Cities',emoji:'\u{1F306}',theme:'Cidades neon',reward:'Neon Skyline',slots:8,offset:0},
-  {name:'Ancient Tech',emoji:'\u{1F3DB}\uFE0F',theme:'Tecnologia ancestral',reward:'Ark of Code',slots:8,offset:0},
-  {name:'Space Frontiers',emoji:'\u{1F680}',theme:'Espaco digital',reward:'Void Emperor',slots:8,offset:0},
-  {name:'Copa do Mundo 2018',emoji:'\u26BD',theme:'Futebol',reward:'Trofeu Copa',slots:8,offset:12}
-];
-
-function getAlbumSlots(a){
-  // Se tem stamps explicito, usa; se tem offset, usa slice; senao pega os primeiros
-  if(a.stamps) return a.stamps;
-  var off=a.offset||0;
-  return STAMPS.slice(off, off+a.slots);
-}
 
 function renderAlbum(){
   if(curAlbum!==null){renderSlots(curAlbum);return}
@@ -876,9 +913,8 @@ function renderSlots(idx){
   var html='';
   slots.forEach(function(s,i){
     var o=COL[s.name]&&COL[s.name].qty>0;
-    var content=o?(s.img?'<img src="'+s.img+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="'+s.name+'">':s.emoji):'?';
     html+='<div class="slot '+(o?'filled':'')+'" style="'+(o?'border-color:'+RARITY_COLORS[s.rarity]:'')+'">'+
-      content+'<span class="slot-number">'+(i+1)+'</span></div>'
+      stampImg(s,'100%')+'<span class="slot-number">'+(i+1)+'</span></div>'
   });
   document.getElementById('slotsGrid').innerHTML=html;
 
@@ -906,10 +942,10 @@ function renderColecao(){
   var html='';
   list.forEach(function(s){
     if(s.qty===0)html+='<div class="colecao-item" style="opacity:0.3;border-color:#222">'+
-      '<div class="colecao-item-emoji">'+(s.img?'<img src="'+s.img+'" style="width:40px;height:40px;object-fit:cover;border-radius:50%" alt="">':'?')+'</div><div class="colecao-item-name">'+s.name+'</div>'+
+      '<div class="colecao-item-emoji">'+stampImg(s,'40px')+'</div><div class="colecao-item-name">'+s.name+'</div>'+
       '<div class="colecao-item-qty" style="color:#444">Nao possui</div></div>';
     else html+='<div class="colecao-item" style="border-color:'+RARITY_COLORS[s.rarity]+'40">'+
-      '<div class="colecao-item-emoji">'+(s.img?'<img src="'+s.img+'" style="width:40px;height:40px;object-fit:cover;border-radius:50%" alt="">':s.emoji)+'</div>'+
+      '<div class="colecao-item-emoji">'+stampImg(s,'40px')+'</div>'+
       '<div class="colecao-item-name">'+s.name+'</div>'+
       '<div class="colecao-item-qty" style="color:'+RARITY_COLORS[s.rarity]+'">'+s.qty+'x '+s.rarity+'</div>'+
       (s.dup>0?'<div class="colecao-item-dup">'+s.dup+' duplicata(s)</div>':'')+
@@ -951,7 +987,7 @@ function renderLoja(){
   // Daily stamp
   var ds=ECO.generateDailyStamp();
   if(ds){
-    document.getElementById('dailyStampDisplay').innerHTML='<span style="font-size:1.5rem">'+ds.stamp.emoji+'</span><span style="font-size:0.7rem;color:#ccc">'+ds.stamp.name+'</span><span style="font-size:0.65rem;color:var(--gold)"> -'+ds.discount+'% ('+ds.price+'\u2605)</span>';
+    document.getElementById('dailyStampDisplay').innerHTML='<span style="font-size:1.5rem"><img src="'+ds.stamp.image+'" style="width:40px;height:40px;object-fit:cover;border-radius:4px"></span><span style="font-size:0.7rem;color:#ccc">'+ds.stamp.name+'</span><span style="font-size:0.65rem;color:var(--gold)"> -'+ds.discount+'% ('+ds.price+'\u2605)</span>';
     document.getElementById('dailyStampBuy').onclick=function(){
       if(!U){openAuth();return}
       if(C<ds.price){notif('Creditos insuficientes!');return}
@@ -992,7 +1028,7 @@ function showPackResults(name,results){
   var html='';
   results.forEach(function(r,i){
     html+='<div class="pack-result-item" style="animation-delay:'+(i*0.12)+'s">'+
-      '<div class="pack-result-emoji">'+r.emoji+'</div>'+
+      '<div class="pack-result-emoji">'+(r.image?'<img src="'+r.image+'" style="width:60px;height:60px;object-fit:cover;border-radius:6px">':'?')+'</div>'+
       '<div class="pack-result-name">'+r.name+'</div>'+
       '<div class="pack-result-rarity '+r.rarity+'">'+r.rarity+'</div></div>'
   });
@@ -1020,7 +1056,7 @@ function renderForja(){
       '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
     if(canForge){
       avail.slice(0,5).forEach(function(s){
-        html+='<span style="font-size:0.6rem;padding:2px 6px;border:1px solid #444;border-radius:4px">'+s.emoji+' '+s.name+' ('+COL[s.name].qty+'x)</span>'
+        html+='<span style="font-size:0.6rem;padding:2px 6px;border:1px solid #444;border-radius:4px">'+stampImg(s,'30px')+' '+s.name+' ('+COL[s.name].qty+'x)</span>'
       })
     }else{
       html+='<span style="font-size:0.6rem;color:#666">Faltam selos '+r.from+' disponiveis</span>'
@@ -1034,7 +1070,7 @@ function renderForja(){
 function forge(rarity){
   var r=ECO.forgeUpgrade(rarity);
   if(r.error){notif(r.error);return}
-  var msg=r.rarity+' '+r.consumed+' -> '+r.gained.rarity+' '+r.gained.emoji+' '+r.gained.name+'!';
+  var msg=r.rarity+' '+r.consumed+' -> '+r.gained.rarity+' '+(r.gained.image?r.gained.name:r.gained.emoji)+' '+r.gained.name+'!';
   notif('\u{1F525} FORJADO! '+msg);
   renderForja();renderColecao();updateNav()
 }
@@ -1102,7 +1138,7 @@ function renderMercado(){
   var html='';
   MARKET.forEach(function(m,i){
     html+='<div style="background:rgba(18,18,18,0.6);border:1px solid #444;border-radius:12px;padding:16px;text-align:center">'+
-      '<div style="font-size:2rem">'+(stampNames[m.stamp]?stampNames[m.stamp].emoji:'\u{1F4E6}')+'</div>'+
+      '<div style="font-size:2rem">'+(findStamp(m.stamp)?stampImg(findStamp(m.stamp),'60px'):'\u{1F4E6}')+'</div>'+
       '<div style="font-size:0.7rem;color:#ccc;margin:4px 0">'+m.stamp+'</div>'+
       '<div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--gold)">'+m.qty+'x | \u2605 '+m.price+'</div>'+
       '<div style="font-family:var(--font-mono);font-size:0.5rem;color:#555">'+m.seller.slice(0,8)+'...</div>'+
@@ -1213,25 +1249,25 @@ function renderBatalha(){
     var opponent=STAMPS[rand(0,STAMPS.length-1)];
     battleState.opponent=opponent;
     var html='<div class="battle-card"><h3 style="font-size:0.9rem;color:var(--cyan);letter-spacing:1px;margin-bottom:16px">\u2694\uFE0F ESCOLHA SEU SELO</h3>'+
-      '<p style="font-family:var(--font-mono);font-size:0.6rem;color:#666;margin-bottom:12px">Oponente: '+opponent.emoji+' '+opponent.name+' ('+opponent.rarity+')</p>'+
+      '<p style="font-family:var(--font-mono);font-size:0.6rem;color:#666;margin-bottom:12px">Oponente: '+(opponent.image?'<img src="'+opponent.image+'" style="width:30px;height:30px;object-fit:cover;border-radius:3px;vertical-align:middle"> ':'')+opponent.name+' ('+opponent.rarity+')</p>'+
       '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px">';
     owned.forEach(function(s){
-      html+='<div class="battle-stamp" data-name="'+s.name+'" onclick="selectBattleStamp(\''+s.name+'\')">'+s.emoji+'<br><span style="font-size:0.5rem">'+s.name.slice(0,10)+'</span></div>'
+      html+='<div class="battle-stamp" data-name="'+s.name+'" onclick="selectBattleStamp(\''+s.name+'\')">'+(s.image?'<img src="'+s.image+'" style="width:40px;height:40px;object-fit:cover;border-radius:4px">':'?')+'<br><span style="font-size:0.5rem">'+s.name.slice(0,10)+'</span></div>'
     });
     html+='</div><div id="battleResult" style="font-family:var(--font-mono);font-size:0.7rem;color:#888"></div></div>';
     el.innerHTML=html
   }
 }
 function selectBattleStamp(name){
-  var s=stampNames[name];if(!s)return;
+  var s=findStamp(name);if(!s)return;
   var opp=battleState.opponent;
   var res=ECO.battle(s,opp);
   var html='<div class="battle-result">';
   if(res.crit1)html+='<div style="color:var(--gold);font-size:0.6rem">CRITICO!</div>';
   html+='<div style="display:flex;justify-content:center;gap:40px;margin:12px 0">'+
-    '<div><div style="font-size:2rem">'+s.emoji+'</div><div style="font-size:0.65rem;color:#ccc">'+res.power1+'</div></div>'+
+    '<div><div>'+(s.image?'<img src="'+s.image+'" style="width:50px;height:50px;object-fit:cover;border-radius:6px">':'?')+'</div><div style="font-size:0.65rem;color:#ccc">'+res.power1+'</div></div>'+
     '<div style="font-size:1.5rem;display:flex;align-items:center">VS</div>'+
-    '<div>'+(res.crit2?'<div style="color:#f72585;font-size:0.6rem">CRITICO!</div>':'')+'<div style="font-size:2rem">'+opp.emoji+'</div><div style="font-size:0.65rem;color:#ccc">'+res.power2+'</div></div>'+
+    '<div>'+(res.crit2?'<div style="color:#f72585;font-size:0.6rem">CRITICO!</div>':'')+'<div>'+(opp.image?'<img src="'+opp.image+'" style="width:50px;height:50px;object-fit:cover;border-radius:6px">':'?')+'</div><div style="font-size:0.65rem;color:#ccc">'+res.power2+'</div></div>'+
     '</div>';
   if(res.winner==='p1'){html+='<div style="color:var(--cyan);font-size:1rem">VITORIA!</div>';C+=15;var bt=(SB.get('battles_today')||0)+1;SB.set('battles_today',bt);BATTLE_WINS++;SB.set('bwins',BATTLE_WINS);ECO.checkAchievements()}
   else if(res.winner==='p2')html+='<div style="color:#f72585;font-size:1rem">DERROTA...</div>';
@@ -1252,7 +1288,7 @@ function renderGuilda(){
       '<p style="font-size:0.65rem;color:#888;margin:8px 0">Junte-se a outros colecionadores para completar o Album da Guilda!</p>'+
       '<button class="store-btn" onclick="createGuild()">CRIAR GUILDA</button></div>';return
   }
-  var slots=STAMPS.slice(0,8);
+  var slots=STAMPS.slice(0,Math.min(8,STAMPS.length));
   var contributed=GUILD.contributed||{};
   var html='<div class="guilda-card"><h3>'+GUILD.emoji+' '+GUILD.name+'</h3>'+
     '<p style="font-size:0.6rem;color:#666;font-family:var(--font-mono)">Lider: '+(GUILD.leader||'anon')+' | Membros: '+(GUILD.members||1)+'</p>'+
@@ -1260,7 +1296,7 @@ function renderGuilda(){
     '<div class="slots-grid" style="grid-template-columns:repeat(auto-fill,minmax(70px,1fr))">';
   slots.forEach(function(s,i){
     var done=contributed[s.name];
-    html+='<div class="slot '+(done?'filled':'')+'" style="font-size:1.5rem">'+(done?s.emoji:'?')+'<span class="slot-number">'+(i+1)+'</span></div>'
+    html+='<div class="slot '+(done?'filled':'')+'" style="font-size:1.5rem">'+(done?stampImg(s,'100%'):'?')+'<span class="slot-number">'+(i+1)+'</span></div>'
   });
   html+='</div></div>';
   html+='<div style="margin-top:12px">'+
@@ -1528,7 +1564,7 @@ function exportAlbumAsWallpaper(albumIdx){
     ctx.font='40px sans-serif';
     ctx.textAlign='center';
     ctx.textBaseline='middle';
-    ctx.fillText(owned?s.emoji:'?',x+size/2,y+size/2);
+    ctx.fillText(owned?s.name:'?',x+size/2,y+size/2);
     // Number
     ctx.fillStyle='#444';
     ctx.font='10px monospace';
@@ -1686,7 +1722,7 @@ function bulkImport(){
         if(!s.name)return;
         var exists=STAMPS.some(function(x){return x.name===s.name});
         if(!exists){
-          STAMPS.push({id:'s'+Date.now(),name:s.name,emoji:s.emoji||'\u{1F4E6}',rarity:s.rarity||'Comum',desc:s.description||''});
+          STAMPS.push({id:'s'+Date.now(),name:s.name,image:s.image||null,rarity:s.rarity||'Comum',desc:s.description||'',albumIdx:ALBUM_DEFS.length,slotIdx:STAMPS.length});
           COL[s.name]={qty:0,dup:0};
           count++;
         }

@@ -1,0 +1,52 @@
+{
+  "albums": [
+    {
+      "name": "COPA 2018",
+      "emoji": "⚽",
+      "theme": "Selecao Brasileira",
+      "reward": "Trofeu Copa",
+      "stamps": [
+        {
+          "name": "ALISSON BECKER",
+          "image": "SELOS/COPA 2018/ALISSON BECKER.png",
+          "rarity": "Lendario"
+        },
+        {
+          "name": "CASEMIRO",
+          "image": "SELOS/COPA 2018/CASEMIRO.png",
+          "rarity": "Lendario"
+        },
+        {
+          "name": "DANILO",
+          "image": "SELOS/COPA 2018/DANILO.png",
+          "rarity": "Epico"
+        },
+        {
+          "name": "FERNANDINHO",
+          "image": "SELOS/COPA 2018/FERNANDINHO.png",
+          "rarity": "Epico"
+        },
+        {
+          "name": "MARQUINHOS",
+          "image": "SELOS/COPA 2018/MARQUINHOS.png",
+          "rarity": "Raro"
+        },
+        {
+          "name": "PAULINHO",
+          "image": "SELOS/COPA 2018/PAULINHO.png",
+          "rarity": "Raro"
+        },
+        {
+          "name": "RENATO AUGUSTO",
+          "image": "SELOS/COPA 2018/RENATO AUGUSTO.png",
+          "rarity": "Comum"
+        },
+        {
+          "name": "THIAGO SILVA",
+          "image": "SELOS/COPA 2018/THIAGO SILVA.png",
+          "rarity": "Comum"
+        }
+      ]
+    }
+  ]
+}
