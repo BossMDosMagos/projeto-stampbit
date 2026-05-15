@@ -816,13 +816,20 @@ var ALBUM_DEFS=[
   {name:'Copa do Mundo 2018',emoji:'\u26BD',theme:'Futebol',reward:'Trofeu Copa',slots:8,offset:12}
 ];
 
+function getAlbumSlots(a){
+  // Se tem stamps explicito, usa; se tem offset, usa slice; senao pega os primeiros
+  if(a.stamps) return a.stamps;
+  var off=a.offset||0;
+  return STAMPS.slice(off, off+a.slots);
+}
+
 function renderAlbum(){
   if(curAlbum!==null){renderSlots(curAlbum);return}
   document.getElementById('albumList').style.display='';
   document.getElementById('albumSlots').style.display='none';
   var html='<div class="album-grid">';
   ALBUM_DEFS.forEach(function(a,i){
-    var off=a.offset||0;var slots=STAMPS.slice(off,off+a.slots),p=ECO.albumProgress(slots);
+    var slots=getAlbumSlots(a),p=ECO.albumProgress(slots);
     var completed=p.owned===p.total;
     html+='<div class="album-card" data-idx="'+i+'">'+
       '<div class="album-card-emoji">'+(completed?'\u{1F3C6}':a.emoji)+'</div>'+
@@ -833,7 +840,7 @@ function renderAlbum(){
       '</div>'
   });
   document.getElementById('albumList').innerHTML=html;
-  document.querySelectorAll('.album-card').forEach(function(c){
+  document.querySelectorAll('#albumList .album-card').forEach(function(c){
     c.addEventListener('click',function(){curAlbum=parseInt(this.dataset.idx);renderSlots(curAlbum)})
   })
 }
@@ -842,7 +849,7 @@ function renderSlots(idx){
   var a=ALBUM_DEFS[idx];
   document.getElementById('albumList').style.display='none';
   document.getElementById('albumSlots').style.display='block';
-  var off=a.offset||0;var slots=STAMPS.slice(off,off+a.slots),p=ECO.albumProgress(slots);
+  var slots=getAlbumSlots(a),p=ECO.albumProgress(slots);
   document.getElementById('slotsInfo').textContent=a.name+' | '+p.owned+'/'+p.total+' ('+p.pct+'%)'+(p.owned===p.total?' COMPLETO!':'');
   var html='';
   slots.forEach(function(s,i){
@@ -1447,7 +1454,7 @@ function exportAlbumAsWallpaper(albumIdx){
     {name:'Copa do Mundo 2018',emoji:'\u26BD',slots:8,offset:12}
   ];
   var a=defs[albumIdx]||defs[0];
-  var off=a.offset||0;var slots=STAMPS.slice(off,off+a.slots);
+  var off=a.offset||0;var slots=a.stamps||STAMPS.slice(off,off+a.slots);
 
   // Create offscreen canvas
   var cols=4,rows=Math.ceil(slots.length/cols);
