@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="80" viewBox="0 0 400 80">
+  <style>text{font-family:monospace;font-weight:700}</style>
+  <text x="40" y="52" font-size="42" fill="#888" letter-spacing="4" text-transform="uppercase">STAMP</text>
+  <text x="210" y="52" font-size="42" fill="#9d4edd" letter-spacing="4" text-transform="uppercase">BIT</text>
+</svg>

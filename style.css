@@ -5,16 +5,6 @@
    ============================================================ */
 
 :root {
-  --bg-deep: #080808;
-  --bg-radial: #121212;
-  --cyan: #4cc9f0;
-  --gold: #9d4edd;
-  --gold-glow: rgba(157, 78, 221, 0.6);
-  --cyan-glow: rgba(76, 201, 240, 0.3);
-  --glass-bg: rgba(18, 18, 18, 0.65);
-  --glass-border: #333;
-  --card-radius: 16px;
-  --chamfer-size: 12px;
   --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
@@ -23,7 +13,7 @@
 
 body {
   font-family: var(--font-display);
-  background: var(--bg-deep);
+  background: url('public/bg.svg') center/cover fixed no-repeat #050508;
   color: #e0e0e0;
   min-height: 100vh;
   overflow-x: hidden;
@@ -77,29 +67,7 @@ body {
   50% { opacity: 0; }
 }
 
-/* ===== BACKGROUND ===== */
-.bg-void {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background: var(--bg-deep);
-}
-.bg-void::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 40%, var(--bg-radial) 0%, var(--bg-deep) 80%);
-  z-index: -1;
-}
-.grid-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image:
-    linear-gradient(rgba(76, 201, 240, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(76, 201, 240, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-}
+/* Background via body image */
 
 /* ===== HEADER ===== */
 header {
@@ -107,17 +75,6 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-.logo {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: 6px;
-  text-transform: uppercase;
-}
-.logo-stamp { color: #888; }
-.logo-bit {
-  color: var(--gold);
-  text-shadow: 0 0 12px var(--gold-glow), 0 0 40px rgba(157, 78, 221, 0.3);
 }
 .header-status {
   font-family: var(--font-mono);
@@ -160,95 +117,21 @@ header {
   margin: 0 auto;
 }
 
-/* ===== CARD (CNC Alumínio) ===== */
+/* ===== CARD ===== */
 .card {
   position: relative;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--card-radius);
+  background: url('public/card-bg.svg') center/cover no-repeat;
+  border: 1px solid #333;
+  border-radius: 12px;
   padding: 24px;
   cursor: pointer;
-  transition: border-color 0.4s, box-shadow 0.4s, transform 0.3s;
-  overflow: hidden;
-  isolation: isolate;
+  transition: border-color 0.3s, transform 0.2s;
   min-height: 220px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
-
-/* Chamfered border (CNC 45deg) */
-.card::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: calc(var(--card-radius) + 2px);
-  z-index: -1;
-  background: transparent;
-  clip-path: polygon(
-    0 var(--chamfer-size),
-    var(--chamfer-size) 0,
-    calc(100% - var(--chamfer-size)) 0,
-    100% var(--chamfer-size),
-    100% calc(100% - var(--chamfer-size)),
-    calc(100% - var(--chamfer-size)) 100%,
-    var(--chamfer-size) 100%,
-    0 calc(100% - var(--chamfer-size))
-  );
-  transition: background 0.4s;
-}
-.card:hover::before {
-  background: linear-gradient(135deg, var(--cyan), transparent 60%, var(--gold));
-}
-
-/* Inner glass rim */
-.card::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: calc(var(--card-radius) - 2px);
-  border: 1px solid rgba(255,255,255,0.04);
-  pointer-events: none;
-  clip-path: polygon(
-    0 calc(var(--chamfer-size) + 2px),
-    calc(var(--chamfer-size) + 2px) 0,
-    calc(100% - var(--chamfer-size) - 2px) 0,
-    100% calc(var(--chamfer-size) + 2px),
-    100% calc(100% - var(--chamfer-size) - 2px),
-    calc(100% - var(--chamfer-size) - 2px) 100%,
-    calc(var(--chamfer-size) + 2px) 100%,
-    0 calc(100% - var(--chamfer-size) - 2px)
-  );
-}
-
-/* PCB overlay */
-.card .pcb-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0;
-  transition: opacity 0.5s;
-  pointer-events: none;
-}
-.card:hover .pcb-overlay { opacity: 1; }
-.card .pcb-overlay svg { width: 100%; height: 100%; }
-
-/* Holographic edge sweep */
-.card .edge-glow {
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 60%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(76, 201, 240, 0.15), transparent);
-  transform: skewX(-20deg);
-  transition: left 0.6s;
-  pointer-events: none;
-  z-index: 1;
-}
-.card:hover .edge-glow { left: 120%; }
+.card:hover { border-color: #4cc9f0; transform: scale(1.01); }
 
 /* Card content */
 .card-content {
@@ -264,77 +147,21 @@ header {
   align-items: flex-start;
   margin-bottom: 12px;
 }
-.card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ccc;
-  letter-spacing: 1px;
-  transition: color 0.3s, text-shadow 0.3s;
-}
-.card:hover .card-title {
-  color: var(--cyan);
-  text-shadow: 0 0 12px var(--cyan-glow);
-}
+.card-title { font-size: 1rem; color: #ccc; letter-spacing: 1px; }
+.card:hover .card-title { color: #4cc9f0; }
 .card-badge {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: #666;
-  padding: 2px 8px;
-  border: 1px solid #333;
-  border-radius: 4px;
-  transition: border-color 0.3s, color 0.3s;
-}
-.card:hover .card-badge {
-  border-color: var(--gold);
-  color: var(--gold);
+  font-family: var(--font-mono); font-size: 0.65rem;
+  color: #666; padding: 2px 8px;
+  border: 1px solid #333; border-radius: 4px;
 }
 .card-thumb {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: 1; display: flex; align-items: center; justify-content: center;
   margin: 8px 0;
-  font-size: 3rem;
-  filter: grayscale(0.6);
-  transition: filter 0.3s, transform 0.3s;
-}
-.card:hover .card-thumb {
-  filter: grayscale(0);
-  transform: scale(1.05);
 }
 .card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: #555;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  font-family: var(--font-mono); font-size: 0.6rem; color: #555;
 }
-.card-serial { transition: color 0.3s; }
-.card:hover .card-serial { color: var(--cyan); }
-.card-hash {
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  direction: rtl;
-  text-align: left;
-  color: #444;
-  transition: color 0.3s;
-}
-.card:hover .card-hash { color: #888; }
-.card-rarity {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
-  font-family: var(--font-mono);
-  font-size: 0.55rem;
-  color: var(--gold);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.card:hover .card-rarity { opacity: 1; }
 
 /* ===== FORGE BUTTON ===== */
 .forge-btn {
@@ -344,28 +171,17 @@ header {
   z-index: 100;
   font-family: var(--font-mono);
   font-size: 0.8rem;
-  font-weight: 500;
   letter-spacing: 2px;
-  color: var(--cyan);
-  background: rgba(8, 8, 8, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--cyan);
+  color: #4cc9f0;
+  background: #4cc9f015;
+  border: 1px solid #4cc9f0;
   padding: 14px 28px;
   cursor: pointer;
-  clip-path: polygon(
-    0 8px, 8px 0,
-    calc(100% - 8px) 0, 100% 8px,
-    100% calc(100% - 8px), calc(100% - 8px) 100%,
-    8px 100%, 0 calc(100% - 8px)
-  );
-  transition: box-shadow 0.3s, background 0.3s;
+  border-radius: 6px;
+  transition: background 0.3s;
   text-transform: uppercase;
 }
-.forge-btn:hover {
-  box-shadow: 0 0 24px var(--cyan-glow), inset 0 0 24px rgba(76, 201, 240, 0.1);
-  background: rgba(8, 8, 8, 0.95);
-}
+.forge-btn:hover { background: #4cc9f030; }
 .forge-btn:active { transform: scale(0.97); }
 
 /* ===== FOOTER ===== */
@@ -401,16 +217,13 @@ footer {
   color: #555;
   padding: 8px 16px;
   cursor: pointer;
-  border: 1px solid transparent;
-  border-bottom: none;
-  transition: color 0.3s, border-color 0.3s, background 0.3s;
+  transition: color 0.3s, background 0.3s;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   background: transparent;
-  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
-.nav-tab:hover { color: var(--cyan); background: rgba(76,201,240,0.05); }
-.nav-tab.active { color: var(--cyan); border-color: rgba(76,201,240,0.2); background: rgba(76,201,240,0.08); }
+.nav-tab:hover { color: #4cc9f0; background: rgba(76,201,240,0.08); }
+.nav-tab.active { color: #4cc9f0; background: rgba(76,201,240,0.12); }
 .nav-spacer { flex: 1; }
 .nav-user {
   font-family: var(--font-mono);
