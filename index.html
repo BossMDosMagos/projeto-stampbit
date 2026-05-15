@@ -25,7 +25,7 @@
 <div class="modal-error" id="authError"></div>
 <form id="authForm" onsubmit="return false" style="display:contents">
 <input class="modal-input" id="authEmail" type="email" placeholder="EMAIL">
-<input class="modal-input" id="authPassword" type="password" placeholder="SENHA">
+<input class="modal-input" id="authPassword" type="password" placeholder="SENHA" autocomplete="current-password">
 <button class="modal-btn" id="authBtn" type="button">ENTRAR</button>
 </form>
 <div class="modal-toggle" id="authToggle">Criar conta</div>
@@ -208,7 +208,7 @@
 <div id="adminLogin" style="max-width:400px;margin:40px auto;text-align:center">
   <div style="font-size:2rem;margin-bottom:12px">&#x1F512;</div>
   <form onsubmit="adminLogin();return false" style="display:contents">
-  <input class="modal-input" id="adminPassInput" type="password" placeholder="Chave de acesso">
+  <input class="modal-input" id="adminPassInput" type="password" placeholder="Chave de acesso" autocomplete="new-password">
   <button class="modal-btn" type="button" onclick="adminLogin()">ACESSAR PAINEL</button>
   </form>
 </div>
@@ -552,12 +552,19 @@ function notif(msg){var e=document.getElementById('notif');e.textContent=msg;e.s
 
 // Forca migracao da colecao: adiciona SELOS faltando e ja salva
 function forceMigrateCollection(){
+  if(!COL){
+    console.warn('[STAMPBIT] COL undefined, recriando');
+    COL = {};
+  }
   STAMPS.forEach(function(s){
     if(!COL[s.name]) COL[s.name]={qty:0,dup:0};
   });
   SB.set('collection', COL);
 }
 forceMigrateCollection();
+
+// Garante que COL esteja sempre definida apos o loadCatalog
+if(!COL || typeof COL !== 'object'){ COL = {}; STAMPS.forEach(function(s){ COL[s.name] = {qty:0,dup:0} }); SB.set('collection', COL); }
 
 function resetLocalData(){
   if(confirm('Zerar todos os dados locais? Isso nao afeta o Supabase.')){
