@@ -314,7 +314,7 @@ footer {
 /* ===== ALBUM ===== */
 .album-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 20px; margin-bottom: 32px;
 }
 .album-card {
@@ -343,14 +343,16 @@ footer {
 .slots-back:hover { opacity: 0.7; }
 .slots-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
 }
 .slot {
-  aspect-ratio: 1; background: rgba(18,18,18,0.4);
-  border: 1px solid #222; border-radius: 8px;
+  aspect-ratio: 2.5/3.5;
+  background: url('public/card-bg.svg') center/cover no-repeat;
+  border: 1px solid #333; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 2rem; position: relative; transition: border-color 0.3s;
+  position: relative; transition: border-color 0.3s;
+  overflow: hidden;
 }
 .slot.filled { border-color: var(--cyan); background: rgba(76,201,240,0.05); }
 .slot.locked { opacity: 0.3; }
@@ -362,14 +364,27 @@ footer {
 /* ===== COLECAO ===== */
 .colecao-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
 }
 .colecao-item {
-  background: rgba(18,18,18,0.6); border: 1px solid #333;
-  border-radius: 12px; padding: 16px; text-align: center;
+  aspect-ratio: 2.5/3.5;
+  background: url('public/card-bg.svg') center/cover no-repeat;
+  border: 1px solid #333; border-radius: 12px;
+  padding: 12px; text-align: center;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px;
+  overflow: hidden;
 }
-.colecao-item-emoji { font-size: 2.2rem; margin-bottom: 6px; }
+.colecao-item-emoji { 
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; overflow: hidden;
+}
+.colecao-item-emoji img {
+  width: 100%; height: 100%;
+  object-fit: cover; border-radius: 4px;
+}
 .colecao-item-name { font-size: 0.75rem; color: #aaa; letter-spacing: 0.5px; }
 .colecao-item-qty { font-family: var(--font-mono); font-size: 0.6rem; color: #666; margin-top: 4px; }
 .colecao-item-dup {
